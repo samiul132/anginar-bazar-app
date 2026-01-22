@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "grocery-shop",
-    "slug": "grocery-shop",
+    "name": "anginarbazar",
+    "slug": "anginarbazar",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "groceryshop",
+    "scheme": "anginarbazar",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -38,7 +38,8 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,
