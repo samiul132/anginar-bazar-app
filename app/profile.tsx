@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -10,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
 import CommonLayout from "../components/CommonLayout";
 import {
   clearAuthData,
@@ -25,11 +27,14 @@ export default function Profile() {
   const [customerData, setCustomerData] = useState<any>(null);
   const [ordersCount, setOrdersCount] = useState(0);
 
-  useEffect(() => {
-    checkAuthentication();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      checkAuthentication();
+    }, []),
+  );
 
   const checkAuthentication = async () => {
+    setLoading(true);
     try {
       const token = await getAuthToken();
       const customer = await getCustomerData();
@@ -38,14 +43,15 @@ export default function Profile() {
         setIsAuthenticated(true);
         setCustomerData(customer);
 
-        // Fetch orders count
         await fetchOrdersCount();
       } else {
         setIsAuthenticated(false);
+        setCustomerData(null);
       }
     } catch (error) {
       console.error("Auth check error:", error);
       setIsAuthenticated(false);
+      setCustomerData(null);
     } finally {
       setLoading(false);
     }
@@ -62,16 +68,37 @@ export default function Profile() {
     }
   };
 
+  const handleRefresh = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    try {
+      const token = await getAuthToken();
+      const customer = await getCustomerData();
+
+      if (token && customer) {
+        setIsAuthenticated(true);
+        setCustomerData(customer);
+        await fetchOrdersCount();
+      } else {
+        setIsAuthenticated(false);
+        setCustomerData(null);
+      }
+    } catch (error) {
+      console.error("Refresh error:", error);
+    }
+  };
+
   const handleLogout = async () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert("লগআউট", "আপনি কি লগআউট করতে চান?", [
+      { text: "বাতিল", style: "cancel" },
       {
-        text: "Logout",
+        text: "লগআউট",
         style: "destructive",
         onPress: async () => {
           await clearAuthData();
           setIsAuthenticated(false);
           setCustomerData(null);
+          setOrdersCount(0);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         },
       },
@@ -85,28 +112,35 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <CommonLayout title="Profile" currentRoute="profile">
+      <CommonLayout
+        title="প্রোফাইল"
+        currentRoute="profile"
+        onRefresh={handleRefresh}
+      >
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#ff0000" />
+          <ActivityIndicator size="large" color="#059669" />
         </View>
       </CommonLayout>
     );
   }
 
-  // ✅ If NOT authenticated, show Login prompt (NO REDIRECT)
   if (!isAuthenticated) {
     return (
-      <CommonLayout title="Profile" currentRoute="profile">
+      <CommonLayout
+        title="প্রোফাইল"
+        currentRoute="profile"
+        onRefresh={handleRefresh}
+      >
         <View className="flex-1 items-center justify-center px-6 bg-gray-50 dark:bg-gray-900">
           <View className="w-32 h-32 bg-gray-100 dark:bg-gray-800 rounded-full items-center justify-center mb-6">
             <Ionicons name="person-outline" size={64} color="#9ca3af" />
           </View>
 
           <Text className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
-            Welcome to Anginarbazar
+            অংগিনার বাজারে স্বাগতম
           </Text>
           <Text className="text-gray-600 dark:text-gray-400 text-center mb-8">
-            Please login to view your profile and orders
+            আপনার প্রোফাইল এবং অর্ডার দেখতে লগইন করুন
           </Text>
 
           <TouchableOpacity
@@ -114,13 +148,13 @@ export default function Profile() {
             className="bg-primary-600 rounded-xl px-8 py-4 w-full items-center"
           >
             <Text className="text-white font-semibold text-base">
-              Login / Sign Up
+              লগইন / সাইন আপ
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => router.push("/")} className="mt-4">
             <Text className="text-gray-500 dark:text-gray-400">
-              Continue as Guest
+              গেস্ট হিসেবে চালিয়ে যান
             </Text>
           </TouchableOpacity>
         </View>
@@ -128,30 +162,45 @@ export default function Profile() {
     );
   }
 
-  // ✅ If authenticated, show Profile
   const menuItems = [
     {
+      icon: "grid-outline",
+      title: "ড্যাশবোর্ড",
+      color: "#ef4444",
+      route: "/dashboard",
+    },
+    {
       icon: "person-outline",
-      title: "Edit Profile",
+      title: "প্রোফাইল এডিট",
       color: "#059669",
-      route: "/auth/complete-profile?mode=edit",
+      route: "/auth/edit-profile",
     },
     {
       icon: "receipt-outline",
-      title: "Order History",
+      title: "অর্ডার ইতিহাস",
       color: "#7c3aed",
       route: "/orders",
     },
     {
       icon: "help-circle-outline",
-      title: "Help & Support",
+      title: "সাহায্য ও সহায়তা",
       color: "#06b6d4",
       route: "/help-support",
+    },
+    {
+      icon: "trash-outline",
+      title: "অ্যাকাউন্ট মুছে ফেলুন",
+      color: "#ef4444",
+      route: "/delete-account",
     },
   ];
 
   return (
-    <CommonLayout title="My Profile" currentRoute="profile">
+    <CommonLayout
+      title="আমার প্রোফাইল"
+      currentRoute="profile"
+      onRefresh={handleRefresh}
+    >
       <ScrollView className="flex-1 bg-gray-50 dark:bg-gray-900">
         {/* Profile Header */}
         <View className="bg-primary-600 pt-6 pb-8 px-4 items-center">
@@ -163,10 +212,10 @@ export default function Profile() {
             </View>
           </View>
           <Text className="text-white text-2xl font-bold mb-1">
-            {customerData?.name || "Guest User"}
+            {customerData?.name || "গেস্ট ইউজার"}
           </Text>
           <Text className="text-white text-sm">
-            {customerData?.phone ? `+880 ${customerData.phone}` : "No phone"}
+            {customerData?.phone ? `+88 ${customerData.phone}` : "ফোন নেই"}
           </Text>
           {customerData?.email && (
             <View className="flex-row items-center mt-1">
@@ -188,7 +237,7 @@ export default function Profile() {
               {ordersCount}
             </Text>
             <Text className="text-gray-600 dark:text-gray-400 text-sm mt-1">
-              Total Orders
+              মোট অর্ডার
             </Text>
           </TouchableOpacity>
         </View>
@@ -196,7 +245,7 @@ export default function Profile() {
         {/* Account Details */}
         <View className="mx-4 mt-4 bg-white dark:bg-gray-800 rounded-2xl p-4">
           <Text className="text-gray-800 dark:text-white font-bold text-lg mb-3">
-            Account Details
+            অ্যাকাউন্ট বিবরণ
           </Text>
 
           <View className="space-y-3">
@@ -206,7 +255,7 @@ export default function Profile() {
               </View>
               <View className="ml-3 flex-1">
                 <Text className="text-gray-500 dark:text-gray-400 text-xs">
-                  Full Name
+                  পূর্ণ নাম
                 </Text>
                 <Text className="text-gray-800 dark:text-white font-medium">
                   {customerData?.name || "N/A"}
@@ -220,7 +269,7 @@ export default function Profile() {
               </View>
               <View className="ml-3 flex-1">
                 <Text className="text-gray-500 dark:text-gray-400 text-xs">
-                  Phone Number
+                  ফোন নম্বর
                 </Text>
                 <Text className="text-gray-800 dark:text-white font-medium">
                   {customerData?.phone || "N/A"}
@@ -235,7 +284,7 @@ export default function Profile() {
                 </View>
                 <View className="ml-3 flex-1">
                   <Text className="text-gray-500 dark:text-gray-400 text-xs">
-                    Email
+                    ইমেইল
                   </Text>
                   <Text className="text-gray-800 dark:text-white font-medium">
                     {customerData.email}
@@ -277,7 +326,7 @@ export default function Profile() {
           ))}
 
           {/* Logout Button */}
-          {/* <TouchableOpacity
+          <TouchableOpacity
             onPress={handleLogout}
             className="bg-white dark:bg-gray-800 rounded-xl p-4 flex-row items-center justify-between border-2 border-red-200 dark:border-red-800"
           >
@@ -286,11 +335,11 @@ export default function Profile() {
                 <Ionicons name="log-out-outline" size={22} color="#ef4444" />
               </View>
               <Text className="text-red-600 dark:text-red-400 font-semibold text-base ml-4">
-                Logout
+                লগআউট
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#ef4444" />
-          </TouchableOpacity> */}
+          </TouchableOpacity>
         </View>
 
         <View className="h-6" />

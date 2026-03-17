@@ -1,11 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Href, useRouter } from "expo-router";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import {
   Animated,
   Image,
   Modal,
+  RefreshControl,
   ScrollView,
   StatusBar,
   Text,
@@ -13,17 +14,21 @@ import {
   useColorScheme,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { getCustomerData } from "../config/api";
-import { useCart } from "../contexts/CartContext";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import { getAuthToken, getCustomerData, isAuthenticated } from "../config/api";
+import { useCartItems } from "../contexts/CartContext";
 
 interface Props {
   children: ReactNode;
-  title?: string;
+  title?: string | React.ReactNode;
   currentRoute?: string;
   hideScrollView?: boolean;
   scrollY?: Animated.Value;
   hideCartPreview?: boolean;
+  onRefresh?: () => void | Promise<void>;
 }
 
 function Footer() {
@@ -33,125 +38,71 @@ function Footer() {
   const features = [
     {
       icon: "time-outline",
-      title: "60 Mins",
-      subtitle: "Delivery",
+      title: "৬০ মিনিটে ডেলিভারি",
+      subtitle: "এক্সপ্রেস ডেলিভারি",
     },
     {
-      icon: "shield-checkmark-outline",
-      title: "Authorized",
-      subtitle: "Products",
+      icon: "gift-outline",
+      title: "ডেলিভারি চার্জ ফ্রি",
+      subtitle: "প্রথম অর্ডারে",
     },
     {
-      icon: "headset-outline",
-      title: "24/7",
-      subtitle: "Services",
+      icon: "home-outline",
+      title: "সার্ভিস এরিয়া",
+      subtitle: "মতলব উত্তর, চাঁদপুর",
     },
     {
       icon: "card-outline",
-      title: "Flexible",
-      subtitle: "Payments",
+      title: "নিরাপদ পেমেন্ট",
+      subtitle: "ক্যাশ অন ডেলিভারি",
     },
   ];
 
   return (
     <View className={`${isDark ? "bg-gray-900" : "bg-gray-50"} py-4`}>
-      {/* Feature Cards - 2x2 Grid */}
       <View className="px-4">
-        {/* First Row */}
-        <View className="flex-row justify-between mb-2">
-          {features.slice(0, 2).map((feature, index) => (
-            <View
-              key={index}
-              className={`flex-1 ${index === 0 ? "mr-2" : ""} ${
-                isDark ? "bg-gray-800" : "bg-white"
-              } rounded-xl p-3 flex-row items-center`}
-              style={{
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 3,
-                elevation: 3,
-              }}
-            >
-              {/* Icon */}
-              <View className="bg-red-50 dark:bg-red-900/30 rounded-full p-2 mr-2">
-                <Ionicons
-                  name={feature.icon as any}
-                  size={20}
-                  color="#ef4444"
-                />
+        {[features.slice(0, 2), features.slice(2, 4)].map((row, rowIndex) => (
+          <View
+            key={rowIndex}
+            className={`flex-row justify-between ${rowIndex === 0 ? "mb-2" : ""}`}
+          >
+            {row.map((feature, index) => (
+              <View
+                key={index}
+                className={`flex-1 ${index === 0 ? "mr-2" : ""} ${isDark ? "bg-gray-800" : "bg-white"} rounded-xl p-3 flex-row items-center`}
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 3,
+                  elevation: 3,
+                }}
+              >
+                <View className="bg-primary-50 dark:bg-primary-900/30 rounded-full p-2 mr-2">
+                  <Ionicons
+                    name={feature.icon as any}
+                    size={20}
+                    color="#FF5533"
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text
+                    className={`text-xs font-bold ${isDark ? "text-white" : "text-gray-800"}`}
+                    numberOfLines={1}
+                  >
+                    {feature.title}
+                  </Text>
+                  <Text
+                    className={`text-[10px] ${isDark ? "text-gray-400" : "text-gray-500"}`}
+                    numberOfLines={1}
+                  >
+                    {feature.subtitle}
+                  </Text>
+                </View>
               </View>
-
-              {/* Text */}
-              <View className="flex-1">
-                <Text
-                  className={`text-xs font-bold ${
-                    isDark ? "text-white" : "text-gray-800"
-                  }`}
-                  numberOfLines={1}
-                >
-                  {feature.title}
-                </Text>
-                <Text
-                  className={`text-[10px] ${
-                    isDark ? "text-gray-400" : "text-gray-500"
-                  }`}
-                  numberOfLines={1}
-                >
-                  {feature.subtitle}
-                </Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {/* Second Row */}
-        <View className="flex-row justify-between">
-          {features.slice(2, 4).map((feature, index) => (
-            <View
-              key={index}
-              className={`flex-1 ${index === 0 ? "mr-2" : ""} ${
-                isDark ? "bg-gray-800" : "bg-white"
-              } rounded-xl p-3 flex-row items-center`}
-              style={{
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 3,
-                elevation: 3,
-              }}
-            >
-              {/* Icon */}
-              <View className="bg-red-50 dark:bg-red-900/30 rounded-full p-2 mr-2">
-                <Ionicons
-                  name={feature.icon as any}
-                  size={20}
-                  color="#ef4444"
-                />
-              </View>
-
-              {/* Text */}
-              <View className="flex-1">
-                <Text
-                  className={`text-xs font-bold ${
-                    isDark ? "text-white" : "text-gray-800"
-                  }`}
-                  numberOfLines={1}
-                >
-                  {feature.title}
-                </Text>
-                <Text
-                  className={`text-[10px] ${
-                    isDark ? "text-gray-400" : "text-gray-500"
-                  }`}
-                  numberOfLines={1}
-                >
-                  {feature.subtitle}
-                </Text>
-              </View>
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        ))}
       </View>
     </View>
   );
@@ -159,24 +110,30 @@ function Footer() {
 
 export default function CommonLayout({
   children,
-  title = "Anginar Bazar",
+  title = "আঙিনার বাজার",
   currentRoute = "",
   hideScrollView = false,
   scrollY,
   hideCartPreview = false,
+  onRefresh,
 }: Props) {
   const router = useRouter();
   const scheme = useColorScheme();
   const isDark = scheme === "dark";
+  const insets = useSafeAreaInsets();
 
-  // Cart context
-  const { cartItems, getCartTotal } = useCart();
+  // ── useCartItems — cart change এ re-render হবে, কিন্তু useCart() থেকে হালকা ──
+  const cartItems = useCartItems();
   const cartItemsCount = cartItems.length;
-  const cartTotal = getCartTotal();
+  const cartTotal = useMemo(
+    () => cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    [cartItems],
+  );
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const [customerName, setCustomerName] = useState("Guest User");
+  const [customerName, setCustomerName] = useState("অতিথি ব্যবহারকারী");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadCustomerData();
@@ -184,38 +141,70 @@ export default function CommonLayout({
 
   const loadCustomerData = async () => {
     try {
+      const token = await getAuthToken();
+      if (!token) {
+        setCustomerName("অতিথি ব্যবহারকারী");
+        setCustomerPhone("");
+        return;
+      }
       const data = await getCustomerData();
       if (data) {
-        setCustomerName(data.name || "Guest User");
+        setCustomerName(data.name || "অতিথি ব্যবহারকারী");
         setCustomerPhone(data.phone || "");
+      } else {
+        setCustomerName("অতিথি ব্যবহারকারী");
+        setCustomerPhone("");
       }
     } catch (error) {
       console.error("Error loading customer data:", error);
+      setCustomerName("অতিথি ব্যবহারকারী");
+      setCustomerPhone("");
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      await loadCustomerData();
+      if (onRefresh) await onRefresh();
+    } catch (error) {
+      console.error("Error refreshing:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const handleProfileEdit = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setMenuOpen(false);
+    const authenticated = await isAuthenticated();
+    router.push(
+      authenticated ? ("/auth/edit-profile" as Href) : ("/auth/login" as Href),
+    );
+  };
+
+  const handleMyOrders = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setMenuOpen(false);
+    const authenticated = await isAuthenticated();
+    router.push(authenticated ? ("/orders" as Href) : ("/auth/login" as Href));
+  };
+
   const bottomTabs = [
-    { name: "Home", icon: "home-outline", route: "/", key: "index" },
+    { name: "হোম", icon: "home-outline", route: "/", key: "index" },
+    { name: "শপ", icon: "storefront-outline", route: "/shop", key: "shop" },
+    { name: "কার্ট", icon: "cart-outline", route: "/cart", key: "cart" },
+    { name: "খুঁজুন", icon: "search-outline", route: "/search", key: "search" },
     {
-      name: "Categories",
-      icon: "grid-outline",
-      route: "/categories",
-      key: "categories",
-    },
-    { name: "Cart", icon: "cart-outline", route: "/cart", key: "cart" },
-    { name: "Search", icon: "search-outline", route: "/search", key: "search" },
-    {
-      name: "Profile",
+      name: "প্রোফাইল",
       icon: "person-outline",
       route: "/profile",
       key: "profile",
     },
   ];
 
-  const isActive = (tabKey: string) => {
-    if (!currentRoute) return false;
-    return currentRoute === tabKey;
-  };
+  const isActive = (tabKey: string) => currentRoute === tabKey;
 
   const headerOpacity = scrollY
     ? scrollY.interpolate({
@@ -237,15 +226,9 @@ export default function CommonLayout({
       />
 
       {/* Fixed Header */}
-      <Animated.View
-        style={{
-          opacity: scrollY ? headerOpacity : 1,
-        }}
-      >
+      <Animated.View style={{ opacity: scrollY ? headerOpacity : 1 }}>
         <View
-          className={`px-4 py-3 flex-row items-center justify-between ${
-            isDark ? "bg-gray-800" : "bg-white"
-          }`}
+          className={`px-4 py-3 flex-row items-center justify-between ${isDark ? "bg-gray-800" : "bg-white"}`}
         >
           <View className="flex-row items-center gap-3">
             <TouchableOpacity
@@ -260,11 +243,8 @@ export default function CommonLayout({
                 color={isDark ? "#fff" : "#111"}
               />
             </TouchableOpacity>
-
             <Text
-              className={`text-lg font-bold ${
-                isDark ? "text-white" : "text-gray-800"
-              }`}
+              className={`text-lg font-bold ${isDark ? "text-white" : "text-gray-800"}`}
             >
               {title}
             </Text>
@@ -275,7 +255,6 @@ export default function CommonLayout({
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push("/" as Href);
             }}
-            className="relative"
           >
             <Image
               source={require("../assets/images/anginarbazar_logo.png")}
@@ -293,13 +272,19 @@ export default function CommonLayout({
         <ScrollView
           className="flex-1"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingBottom: cartItemsCount > 0 ? 80 : 0,
-          }}
+          removeClippedSubviews={true}
+          contentContainerStyle={{ paddingBottom: cartItemsCount > 0 ? 80 : 0 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={["#FF5533"]}
+              tintColor="#FF5533"
+              progressBackgroundColor={isDark ? "#1f2937" : "#ffffff"}
+            />
+          }
         >
           {children}
-
-          {/* Footer Component - Feature Cards */}
           <Footer />
         </ScrollView>
       )}
@@ -307,125 +292,122 @@ export default function CommonLayout({
       {/* Cart Preview */}
       {cartItemsCount > 0 && !hideCartPreview && (
         <View
-          className={`absolute bottom-20 left-4 right-4 rounded-2xl shadow-lg ${
-            isDark ? "bg-gray-800" : "bg-white"
-          }`}
           style={{
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
-            elevation: 8,
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: insets.bottom + 64,
           }}
         >
-          <View className="flex-row items-center justify-between px-4 py-3">
-            <View className="flex-row items-center">
-              <View className="bg-emerald-100 dark:bg-emerald-900 rounded-full p-2 mr-3">
-                <Ionicons name="cart" size={20} color="#22c55e" />
+          <View
+            className={`mx-4 rounded-2xl ${isDark ? "bg-gray-800" : "bg-white"}`}
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: -2 },
+              shadowOpacity: 0.15,
+              shadowRadius: 6,
+              elevation: 8,
+            }}
+          >
+            <View className="flex-row items-center justify-between px-4 py-3">
+              <View className="flex-row items-center">
+                <View className="bg-primary-900 dark:bg-primary-900 rounded-full p-2 mr-3">
+                  <Ionicons name="cart" size={20} color="#fff" />
+                </View>
+                <View>
+                  <Text
+                    className={`text-sm font-semibold ${isDark ? "text-white" : "text-gray-800"}`}
+                  >
+                    {cartItemsCount} টি পণ্য
+                  </Text>
+                  <Text className="text-primary-600 dark:text-primary-400 font-bold text-base">
+                    ৳{cartTotal.toFixed(0)}+30
+                  </Text>
+                </View>
               </View>
-              <View>
-                <Text
-                  className={`text-sm font-semibold ${isDark ? "text-white" : "text-gray-800"}`}
-                >
-                  {cartItemsCount} {cartItemsCount === 1 ? "Item" : "Items"}
-                </Text>
-                <Text className="text-primary-600 dark:text-primary-400 font-bold text-base">
-                  ৳{cartTotal.toFixed(2)}
-                </Text>
-              </View>
-            </View>
 
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                router.push("/checkout" as Href);
-              }}
-              className="bg-primary-600 rounded-full px-6 py-3 flex-row items-center"
-            >
-              <Text className="text-white font-bold mr-2">Checkout</Text>
-              <Ionicons name="arrow-forward" size={18} color="#fff" />
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push("/checkout" as Href);
+                }}
+                className="bg-primary-600 rounded-full px-5 py-3 flex-row items-center"
+              >
+                <Text className="text-white font-bold mr-2">
+                  অর্ডার সম্পন্ন..
+                </Text>
+                <Ionicons name="arrow-forward" size={18} color="#ffffff" />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       )}
 
       {/* Bottom Navigation */}
-      <View
-        className={`flex-row justify-around pb-2 border-t ${
-          isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
-        }`}
+      <SafeAreaView
+        edges={["bottom"]}
+        className={`${isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} border-t`}
       >
-        {bottomTabs.map((item) => {
-          const isCart = item.key === "cart";
-
-          return (
-            <TouchableOpacity
-              key={item.name}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push(item.route as Href);
-              }}
-              className="items-center relative"
-              style={{
-                marginTop: isCart ? -5 : 0,
-              }}
-            >
-              <View
-                className={`p-2 rounded-full ${
-                  isCart ? "bg-red-500" : "bg-transparent"
-                }`}
-                style={
-                  isCart
-                    ? {
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 6 },
-                        shadowOpacity: 0.35,
-                        shadowRadius: 8,
-                        elevation: 10,
-                      }
-                    : {}
-                }
+        <View className="flex-row justify-around pt-2 pb-1">
+          {bottomTabs.map((item) => {
+            const isCart = item.key === "cart";
+            return (
+              <TouchableOpacity
+                key={item.name}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push(item.route as Href);
+                }}
+                className="items-center relative"
+                style={{ marginTop: isCart ? -6 : 0 }}
               >
-                <Ionicons
-                  name={item.icon as any}
-                  size={isCart ? 26 : 22}
-                  color={
+                <View
+                  className={`p-2 rounded-full ${isCart ? "bg-primary-500" : "bg-transparent"}`}
+                  style={
                     isCart
-                      ? "#ffffff"
-                      : isActive(item.key)
-                        ? "#ff0000"
-                        : isDark
-                          ? "#9ca3af"
-                          : "#6b7280"
+                      ? {
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 6 },
+                          shadowOpacity: 0.35,
+                          shadowRadius: 8,
+                          elevation: 10,
+                        }
+                      : {}
                   }
-                />
-
-                {isCart && cartItemsCount > 0 && (
-                  <View className="absolute -top-1 -right-1 bg-white rounded-full w-6 h-6 items-center justify-center border-2 border-red-500">
-                    <Text className="text-red-500 text-xs font-bold">
-                      {cartItemsCount}
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              {!isCart && (
-                <Text
-                  className={`text-xs ${
-                    isActive(item.key)
-                      ? "text-primary-500 font-semibold"
-                      : isDark
-                        ? "text-gray-400"
-                        : "text-gray-500"
-                  }`}
                 >
-                  {item.name}
-                </Text>
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+                  <Ionicons
+                    name={item.icon as any}
+                    size={isCart ? 26 : 22}
+                    color={
+                      isCart
+                        ? "#ffffff"
+                        : isActive(item.key)
+                          ? "#FF5533"
+                          : isDark
+                            ? "#9ca3af"
+                            : "#6b7280"
+                    }
+                  />
+                  {isCart && cartItemsCount > 0 && (
+                    <View className="absolute -top-1 -right-1 bg-white rounded-full w-6 h-6 items-center justify-center border-2 border-primary-500">
+                      <Text className="text-primary-500 text-xs font-bold">
+                        {cartItemsCount}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                {!isCart && (
+                  <Text
+                    className={`text-xs ${isActive(item.key) ? "text-primary-500 font-semibold" : isDark ? "text-gray-400" : "text-gray-500"}`}
+                  >
+                    {item.name}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </SafeAreaView>
 
       {/* Side Menu */}
       <Modal visible={menuOpen} transparent animationType="fade">
@@ -444,74 +426,99 @@ export default function CommonLayout({
               </Text>
               {customerPhone && (
                 <Text className="text-white/80 text-sm">
-                  +880 {customerPhone}
+                  +88 {customerPhone}
                 </Text>
               )}
             </View>
 
-            <TouchableOpacity
-              className="px-6 py-4 flex-row items-center"
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setMenuOpen(false);
-                router.push("/orders" as Href);
-              }}
-            >
-              <Ionicons name="receipt-outline" size={22} color="#22c55e" />
-              <Text
-                className={`ml-4 text-base ${isDark ? "text-white" : "text-gray-800"}`}
-              >
-                My Orders
-              </Text>
-            </TouchableOpacity>
+            {[
+              {
+                icon: "home-outline",
+                label: "হোম",
+                onPress: () => {
+                  setMenuOpen(false);
+                  router.push("/" as Href);
+                },
+              },
+              {
+                icon: "apps-outline",
+                label: "ক্যাটাগরি সমূহ",
+                onPress: () => {
+                  setMenuOpen(false);
+                  router.push("/categories" as Href);
+                },
+              },
+              {
+                icon: "apps-outline",
+                label: "ব্র্যান্ড সমূহ",
+                onPress: () => {
+                  setMenuOpen(false);
+                  router.push("/brands" as Href);
+                },
+              },
+              {
+                icon: "storefront-outline",
+                label: "শপ",
+                onPress: () => {
+                  setMenuOpen(false);
+                  router.push("/shop" as Href);
+                },
+              },
+              {
+                icon: "grid-outline",
+                label: "ড্যাশবোর্ড",
+                onPress: async () => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setMenuOpen(false);
+                  const authenticated = await isAuthenticated();
+                  router.push(
+                    authenticated
+                      ? ("/dashboard" as Href)
+                      : ("/auth/login" as Href),
+                  );
+                },
+              },
+              {
+                icon: "receipt-outline",
+                label: "আমার অর্ডার",
+                onPress: handleMyOrders,
+              },
+              {
+                icon: "person-outline",
+                label: "আমার প্রোফাইল",
+                onPress: () => {
+                  setMenuOpen(false);
+                  router.push("/profile" as Href);
+                },
+              },
+              {
+                icon: "create-outline",
+                label: "প্রোফাইল এডিট",
+                onPress: handleProfileEdit,
+              },
+            ].map((item) => (
+              <View key={item.label}>
+                <TouchableOpacity
+                  className="px-6 py-4 flex-row items-center"
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    item.onPress();
+                  }}
+                >
+                  <Ionicons name={item.icon as any} size={22} color="#FF5533" />
+                  <Text
+                    className={`ml-4 text-base ${isDark ? "text-white" : "text-gray-800"}`}
+                  >
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              className="px-6 py-4 flex-row items-center"
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setMenuOpen(false);
-                router.push("/wishlist" as Href);
-              }}
-            >
-              <Ionicons name="heart-outline" size={22} color="#22c55e" />
-              <Text
-                className={`ml-4 text-base ${isDark ? "text-white" : "text-gray-800"}`}
-              >
-                My Wishlist
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              className="px-6 py-4 flex-row items-center"
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setMenuOpen(false);
-                router.push("/auth/complete-profile?mode=edit" as Href);
-              }}
-            >
-              <Ionicons name="person-outline" size={22} color="#22c55e" />
-              <Text
-                className={`ml-4 text-base ${isDark ? "text-white" : "text-gray-800"}`}
-              >
-                Edit Profile
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              className="px-6 py-4 flex-row items-center"
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setMenuOpen(false);
-                router.push("/profile" as Href);
-              }}
-            >
-              <Ionicons name="person-outline" size={22} color="#22c55e" />
-              <Text
-                className={`ml-4 text-base ${isDark ? "text-white" : "text-gray-800"}`}
-              >
-                My Profile
-              </Text>
-            </TouchableOpacity>
+                {/* Divider after Shop */}
+                {item.label === "শপ" && (
+                  <View className="mx-6 border-b border-red-300 dark:border-red-600" />
+                )}
+              </View>
+            ))}
           </View>
 
           <TouchableOpacity

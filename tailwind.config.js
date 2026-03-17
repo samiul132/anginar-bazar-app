@@ -40,6 +40,11 @@ module.exports = {
           dark: "#F9FAFB",
         },
       },
+      fontFamily: {
+        sans: ["NotoSerifBengali-Regular"],
+        bold: ["NotoSerifBengali-Bold"],
+        semibold: ["NotoSerifBengali-SemiBold"],
+      },
     },
   },
   plugins: [],

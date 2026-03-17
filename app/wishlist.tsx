@@ -7,10 +7,36 @@ export default function Wishlist() {
   const router = useRouter();
 
   const wishlistItems = [
-    { id: 1, name: "Fresh Tomato", price: 45, unit: "kg", image: "https://images.unsplash.com/photo-1546094096-0df4bcaaa337?w=400" },
-    { id: 2, name: "Green Apple", price: 180, unit: "kg", image: "https://images.unsplash.com/photo-1619546813926-a78fa6372cd2?w=400" },
-    { id: 3, name: "Fresh Milk", price: 65, unit: "ltr", image: "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=400" },
-    { id: 4, name: "Banana", price: 50, unit: "dz", image: "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=400" },
+    {
+      id: 1,
+      name: "Fresh Tomato",
+      price: 45,
+      unit: "kg",
+      image: "https://images.unsplash.com/photo-1546094096-0df4bcaaa337?w=400",
+    },
+    {
+      id: 2,
+      name: "Green Apple",
+      price: 180,
+      unit: "kg",
+      image:
+        "https://images.unsplash.com/photo-1619546813926-a78fa6372cd2?w=400",
+    },
+    {
+      id: 3,
+      name: "Fresh Milk",
+      price: 65,
+      unit: "ltr",
+      image: "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=400",
+    },
+    {
+      id: 4,
+      name: "Banana",
+      price: 50,
+      unit: "dz",
+      image:
+        "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=400",
+    },
   ];
 
   return (
@@ -23,7 +49,7 @@ export default function Wishlist() {
                 key={product.id}
                 onPress={() => router.push("/productDetails")}
                 className="bg-white dark:bg-gray-800 rounded-2xl p-3 mb-4"
-                style={{ width: '48%' }}
+                style={{ width: "48%" }}
               >
                 <View className="relative">
                   <Image
@@ -41,9 +67,11 @@ export default function Wishlist() {
                 </Text>
                 <Text className="text-primary-600 dark:text-primary-400 font-bold text-lg mb-2">
                   ৳{product.price}
-                  <Text className="text-gray-500 dark:text-gray-400 text-xs">/{product.unit}</Text>
+                  <Text className="text-gray-500 dark:text-gray-400 text-xs">
+                    /{product.unit}
+                  </Text>
                 </Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={() => {
                     alert("Added to cart!");
                     router.push("/cart");

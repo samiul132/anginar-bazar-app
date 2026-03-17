@@ -2,56 +2,54 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Image,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-  useColorScheme,
-  RefreshControl,
-  Dimensions,
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
+    useColorScheme,
 } from "react-native";
 import Toast from "react-native-toast-message";
 import CommonLayout from "../components/CommonLayout";
-import { getProductCategoryApi, handleApiError } from "../config/api";
+import { allBrands, handleApiError } from "../config/api";
 
-interface Category {
+interface Brand {
   id: number;
-  category_name: string;
+  name: string;
   slug: string;
   image: string;
 }
 
-export default function Categories() {
+export default function Brands() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
 
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
-  const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
+  const [screenWidth, setScreenWidth] = useState(
+    Dimensions.get("window").width,
+  );
 
-  // Screen width track 
   useEffect(() => {
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+    const subscription = Dimensions.addEventListener("change", ({ window }) => {
       setScreenWidth(window.width);
     });
-
     return () => subscription?.remove();
   }, []);
 
   useEffect(() => {
-    fetchCategories();
+    fetchBrands();
   }, []);
 
-  const fetchCategories = async () => {
+  const fetchBrands = async () => {
     try {
       setLoading(true);
-      const response = await getProductCategoryApi();
-
+      const response = await allBrands();
       if (response.success && response.data) {
-        setCategories(response.data);
+        setBrands(response.data);
       }
     } catch (error) {
       Toast.show({
@@ -67,11 +65,10 @@ export default function Categories() {
 
   const handleRefresh = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
     try {
-      const response = await getProductCategoryApi();
+      const response = await allBrands();
       if (response.success && response.data) {
-        setCategories(response.data);
+        setBrands(response.data);
       }
     } catch (error) {
       Toast.show({
@@ -84,46 +81,51 @@ export default function Categories() {
   };
 
   const getImageUrl = (imagePath: string) => {
-    if (!imagePath) {
-      return "https://via.placeholder.com/100";
-    }
-    if (imagePath.startsWith("http")) {
-      return imagePath;
-    }
+    if (!imagePath) return "https://via.placeholder.com/100";
+    if (imagePath.startsWith("http")) return imagePath;
     return `https://app.anginarbazar.com/uploads/images/thumbnail/${imagePath}`;
   };
 
-  // Mobile 2, Tablet 3 width calculate
   const isTablet = screenWidth >= 768;
   const itemWidth = isTablet ? "32%" : "48%";
 
   return (
-    <CommonLayout title="ক্যাটাগরি" currentRoute="categories" onRefresh={handleRefresh}>
+    <CommonLayout
+      title="ব্র্যান্ড"
+      currentRoute="brands"
+      onRefresh={handleRefresh}
+    >
       <View className="flex-1 bg-gray-100 dark:bg-gray-900 px-4 pt-4">
         <Text className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
-          ক্যাটাগরিসমূহ দেখুন
+          ব্র্যান্ডসমূহ দেখুন
         </Text>
 
         {loading ? (
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator size="large" color="#ff0000" />
             <Text className="mt-2 text-gray-500 dark:text-gray-400">
-              ক্যাটাগরি লোড হচ্ছে...
+              ব্র্যান্ড লোড হচ্ছে...
+            </Text>
+          </View>
+        ) : brands.length === 0 ? (
+          <View className="flex-1 items-center justify-center">
+            <Text className="text-gray-500 dark:text-gray-400 text-base">
+              কোনো ব্র্যান্ড পাওয়া যায়নি
             </Text>
           </View>
         ) : (
           <ScrollView showsVerticalScrollIndicator={false}>
             <View className="flex-row flex-wrap justify-between">
-              {categories.map((category) => (
+              {brands.map((brand) => (
                 <TouchableOpacity
-                  key={category.id}
+                  key={brand.id}
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    router.push(`/categoryDetails?slug=${category.slug}`);
+                    router.push(`/brandDetails?slug=${brand.slug}`);
                   }}
                   className="bg-white dark:bg-gray-800 rounded-sm mb-3 px-3 py-2 flex-row items-center"
                   style={{
-                    width: itemWidth, 
+                    width: itemWidth,
                     shadowColor: "#000",
                     shadowOffset: { width: 0, height: 2 },
                     shadowOpacity: 0.08,
@@ -133,7 +135,7 @@ export default function Categories() {
                 >
                   {/* LEFT IMAGE */}
                   <Image
-                    source={{ uri: getImageUrl(category.image) }}
+                    source={{ uri: getImageUrl(brand.image) }}
                     className="w-14 h-14 rounded-lg mr-3"
                     resizeMode="contain"
                   />
@@ -144,7 +146,7 @@ export default function Categories() {
                       className="text-sm font-semibold text-gray-800 dark:text-white"
                       numberOfLines={2}
                     >
-                      {category.category_name}
+                      {brand.name}
                     </Text>
                   </View>
                 </TouchableOpacity>

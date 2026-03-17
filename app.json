@@ -1,17 +1,26 @@
 {
   "expo": {
-    "name": "anginarbazar",
-    "slug": "anginarbazar",
-    "version": "1.0.0",
-    "orientation": "portrait",
+    "name": "Anginar Bazar",
+    "slug": "anginar-bazar",
+    "version": "1.0.4",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "anginarbazar",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "UIBackgroundModes": ["remote-notification", "remote-notification"],
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.designcodeit.anginarbazar"
     },
     "android": {
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -19,7 +28,9 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.designcodeit.anginarbazar",
+      "permissions": ["NOTIFICATIONS"]
     },
     "web": {
       "output": "static",
@@ -39,11 +50,24 @@
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#E6F4FE"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4ae841fd-6f4b-415c-9c94-6130c3d216eb"
+      }
     }
   }
 }

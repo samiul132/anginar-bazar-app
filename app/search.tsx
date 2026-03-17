@@ -19,7 +19,8 @@ interface Product {
   name: string;
   slug: string;
   price: number;
-  unit: string;
+  promotionalPrice: number;
+  //unit: string;
   image: string;
   thumbnail?: string;
 }
@@ -33,17 +34,15 @@ export default function Search() {
 
   const popularSearches = ["সবজি", "ফল", "মাংস", "দুধ", "স্ন্যাকস"];
 
-  // Load recent searches from storage on mount
   useEffect(() => {
     loadRecentSearches();
   }, []);
 
-  // Perform search when query changes
   useEffect(() => {
     if (searchQuery.length > 0) {
       const debounceTimer = setTimeout(() => {
         performSearch(searchQuery);
-      }, 500); // Debounce for 500ms
+      }, 500);
 
       return () => clearTimeout(debounceTimer);
     } else {
@@ -94,15 +93,14 @@ export default function Search() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Map the API response to our Product interface
-        // API returns: data.data.products.data (nested structure)
         const productsData = data.data?.products?.data || [];
         const products: Product[] = productsData.map((item: any) => ({
           id: item.id,
           name: item.product_name,
           slug: item.slug,
           price: parseFloat(item.sale_price) || 0,
-          unit: "পিস", // Default unit
+          promotionalPrice: parseFloat(item.promotional_price) || 0,
+          //unit: "পিস",
           image: item.image
             ? `https://app.anginarbazar.com/uploads/images/thumbnail/${item.image}`
             : "",
@@ -139,7 +137,7 @@ export default function Search() {
   };
 
   return (
-    <CommonLayout title="Search" currentRoute="">
+    <CommonLayout title="খুঁজুন" currentRoute="">
       <View className="flex-1 bg-gray-50 dark:bg-gray-900">
         {/* Search Bar */}
         <View className="bg-white dark:bg-gray-800 px-4 py-2">
@@ -215,7 +213,7 @@ export default function Search() {
                       onPress={() => handleSearchSelect(item)}
                       className="bg-primary-100 dark:bg-primary-900 px-4 py-2 rounded-full"
                     >
-                      <Text className="text-primary-700 dark:text-primary-300 font-semibold">
+                      <Text className="text-primary-700 dark:text-white font-semibold">
                         {item}
                       </Text>
                     </TouchableOpacity>
@@ -256,12 +254,23 @@ export default function Search() {
                           <Text className="text-gray-800 dark:text-white font-semibold mb-1">
                             {product.name}
                           </Text>
-                          <Text className="text-primary-600 dark:text-primary-400 font-bold">
-                            ৳{product.price}
-                            <Text className="text-gray-500 text-sm">
-                              /{product.unit}
+
+                          {/* Promotional price থাকলে সেটা দেখাও, না হলে sale_price */}
+                          {product.promotionalPrice > 0 &&
+                          product.promotionalPrice < product.price ? (
+                            <View className="flex-row items-center gap-2">
+                              <Text className="text-primary-600 dark:text-primary-400 font-bold">
+                                ৳{product.promotionalPrice}
+                              </Text>
+                              <Text className="text-gray-400 line-through text-sm">
+                                ৳{product.price}
+                              </Text>
+                            </View>
+                          ) : (
+                            <Text className="text-primary-600 dark:text-primary-400 font-bold">
+                              ৳{product.price}
                             </Text>
-                          </Text>
+                          )}
                         </View>
                       </TouchableOpacity>
                     ))

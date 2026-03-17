@@ -24,7 +24,7 @@ export default function NoPage() {
           isDark ? "text-white" : "text-gray-800"
         } text-center`}
       >
-        Page Not Found
+        পৃষ্ঠা পাওয়া যায়নি
       </Text>
 
       <Text
@@ -32,7 +32,7 @@ export default function NoPage() {
           isDark ? "text-gray-400" : "text-gray-600"
         }`}
       >
-        Sorry, the page you are looking for does not exist.
+        দুঃখিত, আপনি যে পৃষ্ঠাটি খুঁজছেন তা বিদ্যমান নেই।
       </Text>
 
       <TouchableOpacity
@@ -47,7 +47,7 @@ export default function NoPage() {
         }}
       >
         <Text className="text-white font-semibold text-base text-center">
-          Go to Home
+          হোমপেজে যান
         </Text>
       </TouchableOpacity>
     </View>

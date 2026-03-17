@@ -90,7 +90,7 @@ export default function Orders() {
       console.error("Error fetching orders:", error);
       Toast.show({
         type: "error",
-        text1: "Error",
+        text1: "ত্রুটি",
         text2: handleApiError(error),
         position: "bottom",
       });
@@ -126,6 +126,11 @@ export default function Orders() {
     fetchOrders(1, true);
   };
 
+  const handleRefresh = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    await fetchOrders(1, true);
+  };
+
   const handleLogin = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push("/auth/login");
@@ -143,7 +148,7 @@ export default function Orders() {
     ) {
       return "text-orange-600 dark:text-orange-400";
     } else if (
-      statusLower.includes("shipped") ||
+      statusLower.includes("shipping") ||
       statusLower.includes("on the way")
     ) {
       return "text-blue-600 dark:text-blue-400";
@@ -155,7 +160,7 @@ export default function Orders() {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString("bn-BD", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -164,11 +169,11 @@ export default function Orders() {
 
   if (loading) {
     return (
-      <CommonLayout title="My Orders" currentRoute="">
+      <CommonLayout title="আমার অর্ডার" currentRoute="" onRefresh={handleRefresh}>
         <View className="flex-1 items-center justify-center bg-gray-50 dark:bg-gray-900">
           <ActivityIndicator size="large" color="#ff0000" />
           <Text className="mt-4 text-gray-600 dark:text-gray-400">
-            Loading orders...
+            অর্ডার লোড হচ্ছে...
           </Text>
         </View>
       </CommonLayout>
@@ -177,22 +182,24 @@ export default function Orders() {
 
   if (!isAuthenticated) {
     return (
-      <CommonLayout title="My Orders" currentRoute="">
+      <CommonLayout title="আমার অর্ডার" currentRoute="" onRefresh={handleRefresh}>
         <View className="flex-1 items-center justify-center bg-gray-50 dark:bg-gray-900 px-6">
           <View className="w-24 h-24 bg-primary-100 dark:bg-primary-900 rounded-full items-center justify-center mb-6">
             <Ionicons name="receipt-outline" size={48} color="#059669" />
           </View>
           <Text className="text-2xl font-bold text-gray-800 dark:text-white mb-2 text-center">
-            Login Required
+            লগইন প্রয়োজন
           </Text>
           <Text className="text-gray-600 dark:text-gray-400 text-center mb-6">
-            Please login to view your orders
+            আপনার অর্ডার দেখতে লগইন করুন
           </Text>
           <TouchableOpacity
             onPress={handleLogin}
             className="bg-primary-600 rounded-xl px-8 py-4"
           >
-            <Text className="text-white font-bold text-base">Login Now</Text>
+            <Text className="text-white font-bold text-base">
+              এখনই লগইন করুন
+            </Text>
           </TouchableOpacity>
         </View>
       </CommonLayout>
@@ -200,7 +207,7 @@ export default function Orders() {
   }
 
   return (
-    <CommonLayout title="My Orders" currentRoute="">
+    <CommonLayout title="আমার অর্ডার" currentRoute="" onRefresh={handleRefresh}>
       <View className="flex-1 bg-gray-50 dark:bg-gray-900">
         {orders.length === 0 ? (
           <ScrollView
@@ -222,10 +229,10 @@ export default function Orders() {
                 />
               </View>
               <Text className="text-2xl font-bold text-gray-800 dark:text-white mb-2 text-center">
-                No Orders Yet
+                কোনো অর্ডার নেই
               </Text>
               <Text className="text-gray-600 dark:text-gray-400 text-center mb-6">
-                You haven&apos;t placed any orders yet
+                আপনি এখনো কোনো অর্ডার করেননি
               </Text>
               <TouchableOpacity
                 onPress={() => {
@@ -235,7 +242,7 @@ export default function Orders() {
                 className="bg-primary-600 rounded-xl px-8 py-4"
               >
                 <Text className="text-white font-bold text-base">
-                  Start Shopping
+                  শপিং শুরু করুন
                 </Text>
               </TouchableOpacity>
             </View>
@@ -275,12 +282,12 @@ export default function Orders() {
               >
                 <View className="flex-row justify-between items-center mb-3">
                   <Text className="text-gray-800 dark:text-white font-bold text-base">
-                    Order #{order.id}
+                    অর্ডার #{order.id}
                   </Text>
                   <Text
                     className={`${getStatusColor(order.order_status)} font-semibold text-sm`}
                   >
-                    {order.order_status || "Pending"}
+                    {order.order_status || "পেন্ডিং"}
                   </Text>
                 </View>
 
@@ -302,13 +309,13 @@ export default function Orders() {
                     color={isDark ? "#9ca3af" : "#6b7280"}
                   />
                   <Text className="text-gray-600 dark:text-gray-400 text-sm ml-2">
-                    {order.order_details?.length || 0} items
+                    {order.order_details?.length || 0} টি আইটেম
                   </Text>
                 </View>
 
                 <View className="flex-row justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
                   <Text className="text-gray-700 dark:text-gray-300">
-                    Total Amount
+                    মোট পরিমাণ
                   </Text>
                   <Text className="text-primary-600 dark:text-primary-400 font-bold text-lg">
                     ৳{order.payable_amount?.toFixed(2) || "0.00"}
@@ -322,7 +329,7 @@ export default function Orders() {
               <View className="py-4 items-center">
                 <ActivityIndicator size="small" color="#ff0000" />
                 <Text className="mt-2 text-gray-500 dark:text-gray-400 text-sm">
-                  Loading more orders...
+                  আরও অর্ডার লোড হচ্ছে...
                 </Text>
               </View>
             )}
@@ -331,7 +338,7 @@ export default function Orders() {
             {currentPage >= lastPage && orders.length > 0 && (
               <View className="py-4 items-center">
                 <Text className="text-gray-500 dark:text-gray-400 text-sm">
-                  No more orders
+                  আর কোনো অর্ডার নেই
                 </Text>
               </View>
             )}

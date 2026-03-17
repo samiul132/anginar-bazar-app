@@ -1,4 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  deactivatePushToken,
+  registerDeviceForNotifications,
+} from "./notifications";
 
 // ============================================
 // API Configuration
@@ -13,6 +17,8 @@ export const API_CONFIG = {
     INIT_PROFILE: "/init-profile",
     ADD_ADDRESS: "/address",
     GET_HOME_DATA: "/get-home-data",
+    GET_ALL_PRODUCTS: "/get_all_products",
+    GET_BRANDS: "/get-brands",
     GET_PRODUCT_DETAILS: "/get-product-details",
     GET_PRODUCT_CATEGORIES: "/get-categories",
     SEACH: "/search",
@@ -64,6 +70,7 @@ export const setCustomerData = async (customerData: any): Promise<void> => {
 
 export const clearAuthData = async (): Promise<void> => {
   try {
+    await deactivatePushToken();
     await AsyncStorage.multiRemove(["auth_token", "customer_data"]);
   } catch (error) {
     console.error("Error clearing auth data:", error);
@@ -171,6 +178,9 @@ export const verifyOtpApi = async (phone: string, otp: string) => {
   }
   if (data.user) {
     await setCustomerData(data.user);
+  }
+  if (data.user?.id) {
+    await registerDeviceForNotifications(data.user.id);
   }
 
   return data;
@@ -339,6 +349,48 @@ export const placeOrderApi = async (orderData: any) => {
 //     throw error;
 //   }
 // };
+
+// ============================================
+// API Functions - All Products
+// ============================================
+export const allProducts = async () => {
+  try {
+    const response = await apiRequest(
+      API_CONFIG.ENDPOINTS.GET_ALL_PRODUCTS,
+      "GET",
+    );
+    return response;
+  } catch (error) {
+    console.error("Error fetching all products:", error);
+    throw error;
+  }
+};
+
+export const getRelatedProductsApi = async (productId: number) => {
+  try {
+    const response = await apiRequest(
+      `/get-related-products/${productId}`,
+      "GET",
+    );
+    return response;
+  } catch (error) {
+    console.error("Error fetching related products:", error);
+    throw error;
+  }
+};
+
+// ============================================
+// API Functions - All Brands
+// ============================================
+export const allBrands = async () => {
+  try {
+    const response = await apiRequest(API_CONFIG.ENDPOINTS.GET_BRANDS, "GET");
+    return response;
+  } catch (error) {
+    console.error("Error fetching all brands:", error);
+    throw error;
+  }
+};
 
 export const getPopularItemsDataApi = async (page: number = 1) => {
   try {

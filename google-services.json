@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "825301857485",
+    "project_id": "anginar-bazar",
+    "storage_bucket": "anginar-bazar.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:825301857485:android:087d9f91c42056acc0e584",
+        "android_client_info": {
+          "package_name": "com.designcodeit.anginarbazar"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCpjJld0oCIWkEsZ3uBZT9hs_nQPFHidMI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

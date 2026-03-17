@@ -19,7 +19,6 @@ export default function OrderSuccess() {
   const [orderDetails, setOrderDetails] = useState<any>(null);
 
   useEffect(() => {
-    // Only fetch order details for logged-in users
     if (!isGuest) {
       fetchOrderDetails();
     }
@@ -32,8 +31,7 @@ export default function OrderSuccess() {
         setOrderDetails(response.data);
       }
     } catch (error) {
-      console.error("Error fetching order details:", error);
-      // Don't show error to user, just use params data
+      console.error("অর্ডার তথ্য আনতে সমস্যা:", error);
     } finally {
       setLoading(false);
     }
@@ -41,7 +39,7 @@ export default function OrderSuccess() {
 
   if (loading) {
     return (
-      <CommonLayout title="Order Confirmed" currentRoute="">
+      <CommonLayout title="অর্ডার নিশ্চিত" currentRoute="">
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#059669" />
         </View>
@@ -50,41 +48,24 @@ export default function OrderSuccess() {
   }
 
   return (
-    <CommonLayout title="Order Confirmed" currentRoute="">
+    <CommonLayout title="অর্ডার নিশ্চিত" currentRoute="">
       <View className="flex-1 bg-gray-50 dark:bg-gray-900 items-center justify-center px-4">
         <View className="bg-emerald-100 dark:bg-emerald-900 w-32 h-32 rounded-full items-center justify-center mb-6">
           <Ionicons name="checkmark-circle" size={80} color="#059669" />
         </View>
 
         <Text className="text-2xl font-bold text-gray-800 dark:text-white mb-2 text-center">
-          Order Placed Successfully!
+          অর্ডার সফলভাবে সম্পন্ন হয়েছে!
         </Text>
         <Text className="text-gray-600 dark:text-gray-400 text-center mb-6">
-          Thank you for your order. Your order has been placed successfully.
+          আপনার অর্ডারের জন্য ধন্যবাদ। আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে।
         </Text>
 
-        {/* Guest User Notice */}
-        {isGuest && (
-          <View className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 mb-4 border border-blue-200 dark:border-blue-800">
-            <View className="flex-row items-start">
-              <Ionicons name="information-circle" size={20} color="#3b82f6" />
-              <View className="flex-1 ml-2">
-                <Text className="text-blue-800 dark:text-blue-300 font-semibold mb-1">
-                  Guest Order
-                </Text>
-                <Text className="text-blue-700 dark:text-blue-400 text-sm">
-                  Your order has been placed as a guest. To track your order in
-                  the future, please create an account.
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
-
+        {/* Order Details Card */}
         <View className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full mb-6">
           <View className="flex-row justify-between mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
             <Text className="text-gray-600 dark:text-gray-400">
-              Order Number
+              অর্ডার নম্বর
             </Text>
             <Text className="text-gray-800 dark:text-white font-bold">
               #{orderId}
@@ -92,9 +73,7 @@ export default function OrderSuccess() {
           </View>
 
           <View className="flex-row justify-between mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
-            <Text className="text-gray-600 dark:text-gray-400">
-              Total Amount
-            </Text>
+            <Text className="text-gray-600 dark:text-gray-400">মোট পরিমাণ</Text>
             <Text className="text-emerald-600 dark:text-emerald-400 font-bold text-lg">
               ৳{totalAmount}
             </Text>
@@ -102,10 +81,10 @@ export default function OrderSuccess() {
 
           <View className="flex-row justify-between mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
             <Text className="text-gray-600 dark:text-gray-400">
-              Payment Method
+              পেমেন্ট পদ্ধতি
             </Text>
             <Text className="text-gray-800 dark:text-white font-semibold">
-              {paymentMethod === "cod" ? "Cash on Delivery" : paymentMethod}
+              {paymentMethod === "cod" ? "ক্যাশ অন ডেলিভারি" : paymentMethod}
             </Text>
           </View>
 
@@ -113,55 +92,47 @@ export default function OrderSuccess() {
             <Ionicons name="time-outline" size={18} color="#059669" />
             <View className="ml-2 flex-1">
               <Text className="text-gray-800 dark:text-white font-semibold mb-1">
-                Estimated Delivery
+                ডেলিভারি সময়
               </Text>
               <Text className="text-gray-600 dark:text-gray-400 text-sm">
                 {deliveryType === "express"
-                  ? "Within 1 hour (Express Delivery)"
-                  : "Within 3 hours (Standard Delivery)"}
+                  ? "১ ঘন্টার মধ্যে (এক্সপ্রেস ডেলিভারি)"
+                  : "৩ ঘন্টার মধ্যে (স্ট্যান্ডার্ড ডেলিভারি)"}
               </Text>
             </View>
           </View>
         </View>
 
+        {/* Action Buttons */}
         <View className="w-full">
           <TouchableOpacity
             onPress={() => router.push("/")}
             className="bg-emerald-600 rounded-xl py-4 mb-3"
           >
             <Text className="text-white text-center font-bold text-base">
-              Continue Shopping
+              কেনাকাটা চালিয়ে যান
             </Text>
           </TouchableOpacity>
 
-          {/* Show order tracking button only for logged-in users */}
-          {!isGuest && (
-            <TouchableOpacity
-              onPress={() => router.push("/orders")}
-              className="bg-white dark:bg-gray-800 border-2 border-emerald-600 rounded-xl py-4"
-            >
-              <Text className="text-emerald-600 text-center font-bold text-base">
-                View My Orders
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Show login prompt for guest users */}
-          {isGuest && (
-            <TouchableOpacity
-              onPress={() => router.push("/auth/login")}
-              className="bg-white dark:bg-gray-800 border-2 border-emerald-600 rounded-xl py-4"
-            >
-              <Text className="text-emerald-600 text-center font-bold text-base">
-                Create Account to Track Orders
-              </Text>
-            </TouchableOpacity>
-          )}
+          {/* View Order Details */}
+          <TouchableOpacity
+            onPress={() =>
+              router.push({
+                pathname: "/orderDetails",
+                params: { id: orderId, isGuest: isGuest ? "true" : "false" },
+              })
+            }
+            className="bg-white dark:bg-gray-800 border-2 border-emerald-600 rounded-xl py-4"
+          >
+            <Text className="text-emerald-600 text-center font-bold text-base">
+              আমার অর্ডার দেখুন
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <View className="mt-8 items-center">
           <Text className="text-gray-500 dark:text-gray-400 text-center text-sm">
-            🎉 Thank you for shopping with Anginarbazar!
+            🎉 Anginarbazar-এ কেনাকাটার জন্য ধন্যবাদ!
           </Text>
         </View>
       </View>

@@ -1,12 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
   FlatList,
   Image,
+  Modal,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -17,12 +18,26 @@ import {
 import RenderHtml from "react-native-render-html";
 import Toast from "react-native-toast-message";
 import CommonLayout from "../components/CommonLayout";
+import ProductCard from "../components/ProductCard";
 import {
   getProductDetailsApi,
-  getProductsByCategoryApi,
+  getRelatedProductsApi,
   handleApiError,
 } from "../config/api";
-import { useCart } from "../contexts/CartContext";
+import { useCartActions, useProductQuantity } from "../contexts/CartContext";
+
+interface Category {
+  id: number;
+  category_name: string;
+  slug: string;
+  parent_category_id: number | null;
+}
+
+interface Brand {
+  id: number;
+  brand_name: string;
+  slug: string;
+}
 
 interface Product {
   id: number;
@@ -35,7 +50,9 @@ interface Product {
   short_description: string | null;
   image: string;
   gallery_images: string | null;
-  categories: { slug: string }[];
+  categories: Category[];
+  brand?: Brand | null;
+  brand_id?: number | null;
 }
 
 export default function ProductDetails() {
@@ -45,26 +62,104 @@ export default function ProductDetails() {
   const isDark = colorScheme === "dark";
   const mainSliderRef = useRef<FlatList>(null);
 
-  const {
-    cartItems,
-    addToCart,
-    getItemQuantity,
-    updateQuantity,
-    getCartTotal,
-  } = useCart();
+  const { addToCart, updateQuantity } = useCartActions();
 
-  const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState("description");
-  const [isFavorite, setIsFavorite] = useState(false);
   const [loading, setLoading] = useState(true);
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [localQty, setLocalQty] = useState(0);
 
   const productSlug = params.slug as string;
-  const { width } = Dimensions.get("window");
-  const { width: windowWidth } = useWindowDimensions(); // For RenderHtml
-  const PRODUCT_CARD_WIDTH = 110;
+  const { width, height } = Dimensions.get("window");
+  const { width: windowWidth } = useWindowDimensions();
+  const CARD_WIDTH_HORIZONTAL = 110;
+
+  const cartQuantity = useProductQuantity(product?.id ?? 0);
+
+  // cart page থেকে externally বদলালে sync
+  useEffect(() => {
+    setLocalQty(cartQuantity);
+  }, [cartQuantity]);
+
+  const salePrice = product ? parseFloat(product.sale_price) : 0;
+  const promotionalPrice = product ? parseFloat(product.promotional_price) : 0;
+  const hasPromotion = promotionalPrice > 0 && promotionalPrice < salePrice;
+  const finalPrice = hasPromotion ? promotionalPrice : salePrice;
+
+  const productRef = useRef<{
+    id: number;
+    name: string;
+    price: number;
+    image: string;
+    slug: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (product) {
+      productRef.current = {
+        id: product.id,
+        name: product.product_name,
+        price: finalPrice,
+        image: product.image,
+        slug: product.slug,
+      };
+    }
+  }, [product, finalPrice]);
+
+  // pending action ref — setState callback এর বাইরে context call করতে
+  const pendingAction = useRef<null | { type: "add" | "update"; qty: number }>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!pendingAction.current || !productRef.current) return;
+    const action = pendingAction.current;
+    pendingAction.current = null;
+
+    if (action.type === "add") {
+      addToCart(
+        {
+          product_id: productRef.current.id,
+          name: productRef.current.name,
+          price: productRef.current.price,
+          image: productRef.current.image,
+          slug: productRef.current.slug,
+        },
+        1,
+      );
+    } else {
+      updateQuantity(productRef.current.id, action.qty);
+    }
+  }, [localQty]);
+
+  const handleAddToCart = useCallback(() => {
+    if (!productRef.current) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    setLocalQty((prev) => {
+      const newQty = prev + 1;
+      if (prev === 0) {
+        pendingAction.current = { type: "add", qty: 1 };
+      } else {
+        pendingAction.current = { type: "update", qty: newQty };
+      }
+      return newQty;
+    });
+  }, []);
+
+  const handleRemoveFromCart = useCallback(() => {
+    if (!productRef.current) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    setLocalQty((prev) => {
+      const newQty = Math.max(0, prev - 1);
+      pendingAction.current = { type: "update", qty: newQty };
+      return newQty;
+    });
+  }, []);
 
   useEffect(() => {
     if (productSlug) fetchProductDetails();
@@ -97,22 +192,20 @@ export default function ProductDetails() {
     }
   };
 
+  const handleRefresh = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    await fetchProductDetails();
+  };
+
   useEffect(() => {
     if (product) fetchRelatedProducts();
   }, [product]);
 
   const fetchRelatedProducts = async () => {
-    if (!product?.categories?.length) return;
-    const categorySlug = product.categories[0].slug;
-
+    if (!product?.id) return;
     try {
-      const res = await getProductsByCategoryApi(categorySlug);
-      if (res.success && res.data?.products?.data) {
-        const filtered = res.data.products.data.filter(
-          (item: Product) => item.id !== product.id,
-        );
-        setRelatedProducts(filtered);
-      }
+      const res = await getRelatedProductsApi(product.id);
+      if (res.success && res.data) setRelatedProducts(res.data);
     } catch (error) {
       console.log("Error fetching related products:", error);
     }
@@ -121,22 +214,15 @@ export default function ProductDetails() {
   const getAllImages = (): string[] => {
     if (!product) return [];
     const images: string[] = [];
-
-    if (product.image) {
-      images.push(product.image);
-    }
-
+    if (product.image) images.push(product.image);
     if (product.gallery_images) {
-      const galleryArray = product.gallery_images
+      product.gallery_images
         .split(",")
-        .map((img) => img.trim());
-      galleryArray.forEach((img) => {
-        if (img && img !== product.image) {
-          images.push(img);
-        }
-      });
+        .map((img) => img.trim())
+        .forEach((img) => {
+          if (img && img !== product.image) images.push(img);
+        });
     }
-
     return images;
   };
 
@@ -144,7 +230,7 @@ export default function ProductDetails() {
 
   const getImageUrl = (
     imagePath: string | null | undefined,
-    isFull: boolean = false,
+    isFull = false,
   ) => {
     if (!imagePath) return "https://via.placeholder.com/400";
     if (imagePath.startsWith("http")) return imagePath;
@@ -153,19 +239,15 @@ export default function ProductDetails() {
   };
 
   const getDescriptionText = () => {
-    if (product?.description) {
-      return product.description; // Return HTML as is
-    }
-    if (product?.short_description) {
+    if (product?.description) return product.description;
+    if (product?.short_description)
       return `<p>${product.short_description}</p>`;
-    }
     return "<p>No description available</p>";
   };
 
   const handleThumbnailPress = (index: number) => {
     setCurrentImageIndex(index);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
     setTimeout(() => {
       mainSliderRef.current?.scrollToOffset({
         offset: index * width,
@@ -175,222 +257,23 @@ export default function ProductDetails() {
   };
 
   const handleScroll = (event: any) => {
-    const contentOffsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(contentOffsetX / width);
+    const index = Math.round(event.nativeEvent.contentOffset.x / width);
     if (index !== currentImageIndex && index >= 0 && index < allImages.length) {
       setCurrentImageIndex(index);
     }
   };
 
-  // ✅ Fixed: Add to Cart - এখন ঠিকভাবে quantity set করবে
-  const handleAddToCartProduct = (product: Product, qty: number) => {
-    const finalPrice =
-      parseFloat(product.promotional_price) > 0
-        ? parseFloat(product.promotional_price)
-        : parseFloat(product.sale_price);
-
-    const currentQuantity = getItemQuantity(product.id);
-
-    if (currentQuantity > 0) {
-      updateQuantity(product.id, currentQuantity + qty);
-    } else {
-      addToCart(
-        {
-          product_id: product.id,
-          name: product.product_name,
-          price: finalPrice,
-          //unit: "kg",
-          image: product.image,
-          slug: product.slug,
-        },
-        qty,
-      );
-    }
-
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Toast.show({
-      type: "success",
-      text1: "Added to Cart",
-      text2: `${qty} ${product.product_name} added`,
-      position: "bottom",
-      visibilityTime: 1500,
-    });
-
-    // ✅ Quantity reset করো
-    setQuantity(1);
-  };
-
-  const handleRemoveFromCartProduct = (productId: number) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const currentQuantity = getItemQuantity(productId);
-    if (currentQuantity > 0) {
-      updateQuantity(productId, currentQuantity - 1);
-    }
-  };
-
-  const toggleFavorite = () => {
-    setIsFavorite(!isFavorite);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Toast.show({
-      type: isFavorite ? "info" : "success",
-      text1: isFavorite ? "Removed from Wishlist" : "Added to Wishlist!",
-      text2: product?.product_name,
-      position: "bottom",
-      visibilityTime: 1500,
-    });
-  };
-
-  const renderProductCard = (product: Product) => {
-    const quantity = getItemQuantity(product.id);
-    const salePrice = parseFloat(product.sale_price);
-    const promotionalPrice = parseFloat(product.promotional_price);
-    const hasPromotion = promotionalPrice > 0 && promotionalPrice < salePrice;
-    const finalPrice = hasPromotion ? promotionalPrice : salePrice;
-
-    return (
-      <View
-        key={product.id}
-        style={{
-          width: PRODUCT_CARD_WIDTH,
-          marginRight: 12,
-          marginTop: 4,
-          paddingVertical: 2,
-        }}
-      >
-        <TouchableOpacity
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.push(`/productDetails?slug=${product.slug}`);
-          }}
-          className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden"
-          style={{
-            flex: 1,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 3 },
-            shadowOpacity: 0.25,
-            shadowRadius: 5,
-            elevation: 8,
-          }}
-        >
-          <View className="relative">
-            <Image
-              source={{ uri: getImageUrl(product.image) }}
-              className="w-full"
-              style={{ height: 100 }}
-              resizeMode="cover"
-            />
-
-            {quantity === 0 ? (
-              <TouchableOpacity
-                onPress={(e) => {
-                  e.stopPropagation();
-                  const currentQty = getItemQuantity(product.id);
-                  if (currentQty > 0) {
-                    updateQuantity(product.id, currentQty + 1);
-                  } else {
-                    addToCart(
-                      {
-                        product_id: product.id,
-                        name: product.product_name,
-                        price: finalPrice,
-                        //unit: "kg",
-                        image: product.image,
-                        slug: product.slug,
-                      },
-                      1,
-                    );
-                  }
-                  Haptics.notificationAsync(
-                    Haptics.NotificationFeedbackType.Success,
-                  );
-                }}
-                className="absolute bottom-2 right-2 bg-primary-700 rounded-full p-1.5"
-                style={{
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.25,
-                  shadowRadius: 3,
-                  elevation: 5,
-                }}
-              >
-                <Ionicons name="add" size={16} color="white" />
-              </TouchableOpacity>
-            ) : (
-              <View
-                className="absolute bottom-2 right-2 bg-white dark:bg-gray-700 rounded-full flex-row items-center"
-                style={{
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.25,
-                  shadowRadius: 3,
-                  elevation: 5,
-                }}
-              >
-                <TouchableOpacity
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    handleRemoveFromCartProduct(product.id);
-                  }}
-                  className="p-1.5"
-                >
-                  <Ionicons name="remove" size={18} color="#ff0000" />
-                </TouchableOpacity>
-
-                <Text className="text-gray-800 dark:text-white font-bold text-sm px-1.5 min-w-[24px] text-center">
-                  {quantity}
-                </Text>
-
-                <TouchableOpacity
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    const currentQty = getItemQuantity(product.id);
-                    updateQuantity(product.id, currentQty + 1);
-                  }}
-                  className="p-1.5"
-                >
-                  <Ionicons name="add" size={18} color="#ff0000" />
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-
-          <View className="p-2 flex-1 justify-between">
-            <Text
-              className="text-gray-800 dark:text-white font-semibold text-xs"
-              numberOfLines={2}
-            >
-              {product.product_name}
-            </Text>
-
-            {hasPromotion ? (
-              <View className="flex-row items-center mt-1">
-                <Text className="text-gray-400 dark:text-gray-500 font-medium text-xs line-through mr-2">
-                  ৳{Math.round(salePrice)}
-                </Text>
-                <Text className="text-primary-700 dark:text-primary-700 font-bold text-sm">
-                  ৳{Math.round(promotionalPrice)}
-                </Text>
-              </View>
-            ) : (
-              <Text className="text-primary-700 dark:text-primary-700 font-bold text-sm mt-1">
-                ৳{Math.round(salePrice)}
-              </Text>
-            )}
-          </View>
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
-  const cartTotal = getCartTotal();
-
   if (loading)
     return (
-      <CommonLayout title="Product Details" currentRoute="">
+      <CommonLayout
+        title="Product Details"
+        currentRoute=""
+        onRefresh={handleRefresh}
+      >
         <View className="flex-1 items-center justify-center bg-gray-50 dark:bg-gray-900">
           <ActivityIndicator size="large" color="#ff0000" />
           <Text className="mt-2 text-gray-500 dark:text-gray-400">
-            Loading product...
+            পণ্য লোড হচ্ছে…
           </Text>
         </View>
       </CommonLayout>
@@ -398,24 +281,28 @@ export default function ProductDetails() {
 
   if (!product)
     return (
-      <CommonLayout title="Product Details" currentRoute="">
+      <CommonLayout
+        title="Product Details"
+        currentRoute=""
+        onRefresh={handleRefresh}
+      >
         <View className="flex-1 items-center justify-center bg-gray-50 dark:bg-gray-900">
           <Ionicons name="alert-circle-outline" size={64} color="#9ca3af" />
           <Text className="mt-2 text-gray-500 dark:text-gray-400">
-            Product not found
+            পণ্য পাওয়া যায়নি
           </Text>
         </View>
       </CommonLayout>
     );
 
-  const salePrice = parseFloat(product.sale_price);
-  const promotionalPrice = parseFloat(product.promotional_price);
-  const hasPromotion = promotionalPrice > 0 && promotionalPrice < salePrice;
-  const finalPrice = hasPromotion ? promotionalPrice : salePrice;
-
   return (
-    <CommonLayout title="Product Details" currentRoute="">
+    <CommonLayout
+      title="Product Details"
+      currentRoute=""
+      onRefresh={handleRefresh}
+    >
       <ScrollView className="flex-1 bg-gray-50 dark:bg-gray-900">
+        {/* ── Image Slider ── */}
         <View className="bg-white dark:bg-gray-800 relative">
           <View style={{ height: 320 }}>
             <FlatList
@@ -426,20 +313,27 @@ export default function ProductDetails() {
               showsHorizontalScrollIndicator={false}
               onScroll={handleScroll}
               scrollEventThrottle={16}
-              keyExtractor={(item, index) => `main-${index}`}
-              getItemLayout={(data, index) => ({
+              keyExtractor={(_, index) => `main-${index}`}
+              getItemLayout={(_, index) => ({
                 length: width,
                 offset: width * index,
                 index,
               })}
               renderItem={({ item }) => (
-                <View style={{ width }}>
+                <TouchableOpacity
+                  style={{ width }}
+                  activeOpacity={0.9}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    setShowImageModal(true);
+                  }}
+                >
                   <Image
                     source={{ uri: getImageUrl(item, true) }}
                     style={{ width, height: 320 }}
                     resizeMode="cover"
                   />
-                </View>
+                </TouchableOpacity>
               )}
             />
 
@@ -451,16 +345,6 @@ export default function ProductDetails() {
                 name="arrow-back"
                 size={24}
                 color={isDark ? "#fff" : "#111"}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={toggleFavorite}
-              className="absolute top-4 right-4 bg-white/90 dark:bg-gray-800/90 rounded-full p-2 z-10"
-            >
-              <Ionicons
-                name={isFavorite ? "heart" : "heart-outline"}
-                size={24}
-                color="#dc2626"
               />
             </TouchableOpacity>
 
@@ -502,10 +386,61 @@ export default function ProductDetails() {
           )}
         </View>
 
+        {/* ── Product Info ── */}
         <View className="bg-white dark:bg-gray-800 px-4 py-4 border-t border-gray-200 dark:border-gray-700">
+          {(product.brand || product.categories?.length > 0) && (
+            <View className="mb-3 flex-row flex-wrap gap-2">
+              {product.brand?.brand_name && product.brand?.slug && (
+                <TouchableOpacity
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push(`/brandDetails?slug=${product.brand!.slug}`);
+                  }}
+                  className="bg-blue-100 dark:bg-blue-900/30 px-3 py-1.5 rounded-full border border-blue-300 dark:border-blue-700"
+                  activeOpacity={0.7}
+                >
+                  <View className="flex-row items-center">
+                    <Ionicons
+                      name="pricetag"
+                      size={12}
+                      color={isDark ? "#93c5fd" : "#1d4ed8"}
+                    />
+                    <Text className="text-blue-700 dark:text-blue-300 text-xs font-semibold ml-1">
+                      {product.brand.brand_name}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+
+              {product.categories?.map((category) => (
+                <TouchableOpacity
+                  key={category.id}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push(`/categoryDetails?slug=${category.slug}`);
+                  }}
+                  className="bg-green-100 dark:bg-green-900/30 px-3 py-1.5 rounded-full border border-green-300 dark:border-green-700"
+                  activeOpacity={0.7}
+                >
+                  <View className="flex-row items-center">
+                    <Ionicons
+                      name="apps"
+                      size={12}
+                      color={isDark ? "#86efac" : "#15803d"}
+                    />
+                    <Text className="text-green-700 dark:text-green-300 text-xs font-semibold ml-1">
+                      {category.category_name}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
           <Text className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
             {product.product_name}
           </Text>
+
           {hasPromotion ? (
             <View className="flex-row items-center mb-4">
               <Text className="text-gray-400 dark:text-gray-500 font-medium text-lg line-through mr-2">
@@ -514,6 +449,14 @@ export default function ProductDetails() {
               <Text className="text-3xl font-bold text-primary-600 dark:text-primary-400">
                 ৳{promotionalPrice}
               </Text>
+              <View className="ml-2 bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded">
+                <Text className="text-red-600 dark:text-red-400 text-xs font-bold">
+                  {Math.round(
+                    ((salePrice - promotionalPrice) / salePrice) * 100,
+                  )}
+                  % ছাড়
+                </Text>
+              </View>
             </View>
           ) : (
             <Text className="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4">
@@ -521,116 +464,182 @@ export default function ProductDetails() {
             </Text>
           )}
 
-          <View>
-            <Text className="text-gray-600 dark:text-gray-100">
-              {product.short_description}
-            </Text>
-          </View>
-
-          <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-gray-700 dark:text-gray-300 font-semibold">
-              Quantity
-            </Text>
-            <View className="flex-row items-center bg-gray-100 dark:bg-gray-700 rounded-xl">
-              <TouchableOpacity
-                onPress={() => setQuantity(Math.max(1, quantity - 1))}
-                className="p-3"
-              >
-                <Ionicons name="remove" size={20} color="#059669" />
-              </TouchableOpacity>
-              <Text className="px-6 text-lg font-bold text-gray-800 dark:text-white">
-                {quantity}
+          {product.short_description && (
+            <View className="mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+              <Text className="text-gray-600 dark:text-gray-300 text-sm leading-5">
+                {product.short_description}
               </Text>
-              <TouchableOpacity
-                onPress={() => setQuantity(quantity + 1)}
-                className="p-3"
-              >
-                <Ionicons name="add" size={20} color="#059669" />
-              </TouchableOpacity>
             </View>
-          </View>
+          )}
 
-          <TouchableOpacity
-            onPress={() => handleAddToCartProduct(product, quantity)}
-            className="bg-primary-600 rounded-xl py-4 mb-2"
-          >
-            <Text className="text-white text-center font-bold text-base">
-              Add to Cart - ৳{(finalPrice * quantity).toFixed(2)}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <View className="bg-white dark:bg-gray-800 mt-2 px-4 py-3 flex-row">
-          <TouchableOpacity
-            onPress={() => setActiveTab("description")}
-            className={`flex-1 py-2 border-b-2 ${
-              activeTab === "description"
-                ? "border-primary-600"
-                : "border-transparent"
-            }`}
-          >
-            <Text
-              className={`text-center font-semibold ${
-                activeTab === "description"
-                  ? "text-primary-600"
-                  : "text-gray-500 dark:text-gray-400"
-              }`}
+          {/* ── Add to Cart ── */}
+          {localQty === 0 ? (
+            <TouchableOpacity
+              onPress={handleAddToCart}
+              className="bg-primary-600 rounded-xl py-4 flex-row items-center justify-center shadow-lg"
+              activeOpacity={0.8}
             >
-              Description
-            </Text>
-          </TouchableOpacity>
-        </View>
+              <Ionicons name="cart-outline" size={22} color="white" />
+              <Text className="text-white text-center font-bold text-base ml-2">
+                কার্টে যোগ করুন - ৳{Math.round(finalPrice)}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center bg-white dark:bg-gray-700 rounded-xl border-2 border-primary-600 shadow-md">
+                <TouchableOpacity
+                  onPress={handleRemoveFromCart}
+                  className="p-4"
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="remove" size={24} color="#ff0000" />
+                </TouchableOpacity>
 
-        <View className="bg-white dark:bg-gray-800 px-4 py-4">
-          {activeTab === "description" && (
-            <RenderHtml
-              contentWidth={windowWidth - 32}
-              source={{ html: getDescriptionText() }}
-              tagsStyles={{
-                body: {
-                  color: isDark ? "#d1d5db" : "#374151",
-                  fontSize: 14,
-                  lineHeight: 22,
-                },
-                p: {
-                  marginBottom: 8,
-                },
-                strong: {
-                  fontWeight: "bold",
-                  color: isDark ? "#ffffff" : "#111827",
-                },
-                ul: {
-                  marginLeft: 16,
-                },
-                li: {
-                  marginBottom: 4,
-                },
-              }}
-            />
+                <Text className="px-6 text-xl font-bold text-gray-800 dark:text-white min-w-[60px] text-center">
+                  {localQty}
+                </Text>
+
+                <TouchableOpacity
+                  onPress={handleAddToCart}
+                  className="p-4"
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="add" size={24} color="#ff0000" />
+                </TouchableOpacity>
+              </View>
+
+              <View className="bg-primary-600 rounded-xl px-6 py-4 shadow-md">
+                <Text className="text-white font-bold text-base">
+                  ৳{Math.round(finalPrice * localQty)}
+                </Text>
+              </View>
+            </View>
           )}
         </View>
 
+        {/* ── Description ── */}
+        <View className="bg-white dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+          <View className="flex-1 py-2 border-b-2 border-primary-600">
+            <Text className="text-center font-semibold text-primary-600">
+              বিস্তারিত
+            </Text>
+          </View>
+        </View>
+
+        <View className="bg-white dark:bg-gray-800 px-4 py-4">
+          <RenderHtml
+            contentWidth={windowWidth - 32}
+            source={{ html: getDescriptionText() }}
+            tagsStyles={{
+              body: {
+                color: isDark ? "#d1d5db" : "#374151",
+                fontSize: 14,
+                lineHeight: 22,
+              },
+              p: { marginBottom: 8 },
+              strong: {
+                fontWeight: "bold",
+                color: isDark ? "#ffffff" : "#111827",
+              },
+              ul: { marginLeft: 16 },
+              li: { marginBottom: 4 },
+              h1: {
+                fontSize: 20,
+                fontWeight: "bold",
+                marginBottom: 12,
+                color: isDark ? "#ffffff" : "#111827",
+              },
+              h2: {
+                fontSize: 18,
+                fontWeight: "bold",
+                marginBottom: 10,
+                color: isDark ? "#ffffff" : "#111827",
+              },
+              h3: {
+                fontSize: 16,
+                fontWeight: "bold",
+                marginBottom: 8,
+                color: isDark ? "#ffffff" : "#111827",
+              },
+            }}
+          />
+        </View>
+
+        {/* ── Related Products ── */}
         {relatedProducts.length > 0 && (
-          <View className="bg-white dark:bg-gray-800 mt-4">
-            <View className="flex-row justify-between items-center px-4 mt-3 mb-2">
+          <View className="bg-white dark:bg-gray-800 pb-4">
+            <View className="px-4 pt-4 pb-2">
               <Text className="text-xl font-bold text-gray-800 dark:text-white">
-                একই ক্যাটাগরির অন্যান্য পণ্য
+                অন্যান্য পণ্য
               </Text>
             </View>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              className="px-4 py-4"
+              className="px-4 py-2"
+              contentContainerStyle={{ paddingRight: 16 }}
             >
-              {relatedProducts
-                .slice(0, 10)
-                .map((item) => renderProductCard(item))}
+              {relatedProducts.slice(0, 10).map((p) => (
+                <ProductCard
+                  key={p.id}
+                  product={p}
+                  isHorizontal={true}
+                  cardWidth={CARD_WIDTH_HORIZONTAL}
+                />
+              ))}
             </ScrollView>
           </View>
         )}
-
-        <View className="h-20" />
       </ScrollView>
+
+      {/* ── Image Zoom Modal ── */}
+      <Modal
+        visible={showImageModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowImageModal(false)}
+      >
+        <View className="flex-1 bg-black">
+          <TouchableOpacity
+            onPress={() => setShowImageModal(false)}
+            className="absolute top-12 right-4 z-10 bg-white/20 rounded-full p-2"
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close" size={28} color="#fff" />
+          </TouchableOpacity>
+
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            contentOffset={{ x: currentImageIndex * width, y: 0 }}
+          >
+            {allImages.map((image, index) => (
+              <View
+                key={`modal-${index}`}
+                style={{ width, height }}
+                className="items-center justify-center"
+              >
+                <Image
+                  source={{ uri: getImageUrl(image, true) }}
+                  style={{ width, height }}
+                  resizeMode="contain"
+                />
+              </View>
+            ))}
+          </ScrollView>
+
+          {allImages.length > 1 && (
+            <View className="absolute bottom-8 left-0 right-0 items-center">
+              <View className="bg-black/60 rounded-full px-4 py-2">
+                <Text className="text-white text-sm font-semibold">
+                  {currentImageIndex + 1} / {allImages.length}
+                </Text>
+              </View>
+            </View>
+          )}
+        </View>
+      </Modal>
     </CommonLayout>
   );
 }
