@@ -10,6 +10,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  useColorScheme,
 } from "react-native";
 import CommonLayout from "../components/CommonLayout";
 import { API_BASE_URL } from "../config/api";
@@ -33,6 +34,9 @@ export default function Search() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
   const popularSearches = ["সবজি", "ফল", "মাংস", "দুধ", "স্ন্যাকস"];
+
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
 
   useEffect(() => {
     loadRecentSearches();
@@ -141,20 +145,46 @@ export default function Search() {
       <View className="flex-1 bg-gray-50 dark:bg-gray-900">
         {/* Search Bar */}
         <View className="bg-white dark:bg-gray-800 px-4 py-2">
-          <View className="flex-row items-center bg-gray-100 dark:bg-gray-700 rounded-xl px-4 py-1">
-            <Ionicons name="search-outline" size={20} color="#6b7280" />
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: isDark ? "#111827" : "#f9fafb",
+              borderRadius: 16,
+              paddingHorizontal: 16,
+              paddingVertical: 0,
+              borderWidth: 1,
+              borderColor: isDark ? "#4b5563" : "#e5e7eb",
+            }}
+          >
+            <Ionicons
+              name="search-outline"
+              size={22}
+              color={isDark ? "#9ca3af" : "#6b7280"}
+            />
             <TextInput
               placeholder="পণ্য খুঁজুন..."
               value={searchQuery}
               onChangeText={setSearchQuery}
-              className="flex-1 ml-2 text-gray-800 dark:text-white"
+              style={{
+                flex: 1,
+                marginLeft: 12,
+                fontSize: 16,
+                color: isDark ? "#ffffff" : "#1f2937",
+              }}
               placeholderTextColor="#9ca3af"
               autoFocus
             />
-            {searchQuery.length > 0 && (
+            {searchQuery.length > 0 ? (
               <TouchableOpacity onPress={() => setSearchQuery("")}>
                 <Ionicons name="close-circle" size={20} color="#6b7280" />
               </TouchableOpacity>
+            ) : (
+              <Ionicons
+                name="options-outline"
+                size={20}
+                color={isDark ? "#9ca3af" : "#6b7280"}
+              />
             )}
           </View>
         </View>

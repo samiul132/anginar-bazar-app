@@ -29,6 +29,7 @@ interface Props {
   scrollY?: Animated.Value;
   hideCartPreview?: boolean;
   onRefresh?: () => void | Promise<void>;
+  openMenuRef?: React.MutableRefObject<(() => void) | null>;
 }
 
 function Footer() {
@@ -116,6 +117,7 @@ export default function CommonLayout({
   scrollY,
   hideCartPreview = false,
   onRefresh,
+  openMenuRef,
 }: Props) {
   const router = useRouter();
   const scheme = useColorScheme();
@@ -138,6 +140,12 @@ export default function CommonLayout({
   useEffect(() => {
     loadCustomerData();
   }, []);
+
+  useEffect(() => {
+    if (openMenuRef) {
+      openMenuRef.current = () => setMenuOpen(true);
+    }
+  }, [openMenuRef]);
 
   const loadCustomerData = async () => {
     try {

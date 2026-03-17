@@ -4,13 +4,14 @@ import { getCustomerData, getMyOrdersApi, isAuthenticated } from "@/config/api";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Animated,
-    Dimensions,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useColorScheme,
 } from "react-native";
 import CommonLayout from "../components/CommonLayout";
 
@@ -42,46 +43,65 @@ interface Customer {
 }
 
 // ============================================
-// Status Config
+// Status Config (light + dark রং আলাদা)
 // ============================================
 const STATUS_CONFIG: Record<
   string,
-  { label: string; bg: string; color: string; dot: string }
+  {
+    label: string;
+    bg: string;
+    darkBg: string;
+    color: string;
+    darkColor: string;
+    dot: string;
+  }
 > = {
   pending: {
     label: "Pending",
     bg: "#fff7ed",
+    darkBg: "#431407",
     color: "#c2410c",
+    darkColor: "#fb923c",
     dot: "#fb923c",
   },
   processing: {
     label: "Processing",
     bg: "#eff6ff",
+    darkBg: "#1e3a5f",
     color: "#1d4ed8",
+    darkColor: "#60a5fa",
     dot: "#60a5fa",
   },
   shipping: {
     label: "Shipping",
     bg: "#f0fdf4",
+    darkBg: "#14532d",
     color: "#15803d",
+    darkColor: "#4ade80",
     dot: "#4ade80",
   },
   delivered: {
     label: "Delivered",
     bg: "#f0fdf4",
+    darkBg: "#14532d",
     color: "#15803d",
+    darkColor: "#4ade80",
     dot: "#16a34a",
   },
   cancelled: {
     label: "Cancelled",
     bg: "#fef2f2",
+    darkBg: "#450a0a",
     color: "#b91c1c",
+    darkColor: "#f87171",
     dot: "#f87171",
   },
   completed: {
     label: "Completed",
     bg: "#f0fdf4",
+    darkBg: "#14532d",
     color: "#166534",
+    darkColor: "#4ade80",
     dot: "#16a34a",
   },
 };
@@ -97,6 +117,7 @@ function StatCard({
   accent,
   delay = 0,
   onPress,
+  isDark,
 }: {
   icon: string;
   label: string;
@@ -105,6 +126,7 @@ function StatCard({
   accent: string;
   delay?: number;
   onPress?: () => void;
+  isDark: boolean;
 }) {
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(20)).current;
@@ -128,30 +150,52 @@ function StatCard({
 
   const card = (
     <Animated.View
-      style={[styles.statCard, { opacity, transform: [{ translateY }] }]}
+      style={[
+        styles.statCard,
+        {
+          opacity,
+          transform: [{ translateY }],
+          backgroundColor: isDark ? "#1f2937" : "#fff",
+        },
+      ]}
     >
       <View style={[styles.statAccentBar, { backgroundColor: accent }]} />
       <Text style={styles.statIcon}>{icon}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+      <Text
+        style={[styles.statLabel, { color: isDark ? "#6b7280" : "#9ca3af" }]}
+      >
+        {label}
+      </Text>
       <Text style={[styles.statValue, { color: accent }]}>{value}</Text>
-      {sub && <Text style={styles.statSub}>{sub}</Text>}
+      {sub && (
+        <Text style={[styles.statSub, { color: isDark ? "#6b7280" : "#aaa" }]}>
+          {sub}
+        </Text>
+      )}
     </Animated.View>
   );
 
-  if (onPress) {
+  if (onPress)
     return (
       <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
         {card}
       </TouchableOpacity>
     );
-  }
   return card;
 }
 
 // ============================================
 // Order Row
 // ============================================
-function OrderRow({ order, index }: { order: Order; index: number }) {
+function OrderRow({
+  order,
+  index,
+  isDark,
+}: {
+  order: Order;
+  index: number;
+  isDark: boolean;
+}) {
   const router = useRouter();
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -175,7 +219,11 @@ function OrderRow({ order, index }: { order: Order; index: number }) {
     order.created_at || order.order_date
       ? new Date(order.created_at || order.order_date || "").toLocaleDateString(
           "en-US",
-          { day: "2-digit", month: "short", year: "numeric" },
+          {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          },
         )
       : "—";
 
@@ -183,45 +231,99 @@ function OrderRow({ order, index }: { order: Order; index: number }) {
     order.order_items_count ??
     order.order_details?.length ??
     order.items?.length;
-
   const amount = Number(order.payable_amount || order.total_amount || 0);
   const dueAmt = Number(order.due_amount || 0);
 
   return (
     <Animated.View style={{ opacity }}>
       <TouchableOpacity
-        style={styles.orderRow}
+        style={[
+          styles.orderRow,
+          { backgroundColor: isDark ? "#1f2937" : "#fff" },
+        ]}
         activeOpacity={0.75}
         onPress={() => router.push(`/orderDetails?id=${order.id}` as any)}
       >
-        {/* Left */}
         <View style={styles.orderLeft}>
-          <Text style={styles.orderId}>#{order.id}</Text>
-          <Text style={styles.orderDate}>{date}</Text>
+          <Text
+            style={[styles.orderId, { color: isDark ? "#f9fafb" : "#111" }]}
+          >
+            #{order.id}
+          </Text>
+          <Text
+            style={[
+              styles.orderDate,
+              { color: isDark ? "#6b7280" : "#9ca3af" },
+            ]}
+          >
+            {date}
+          </Text>
           {itemCount != null && (
-            <Text style={styles.orderItems}>{itemCount} items</Text>
+            <Text
+              style={[
+                styles.orderItems,
+                { color: isDark ? "#9ca3af" : "#6b7280" },
+              ]}
+            >
+              {itemCount} পণ্য
+            </Text>
           )}
         </View>
 
-        {/* Right */}
         <View style={styles.orderRight}>
-          <Text style={styles.orderAmount}>৳{amount.toLocaleString()}</Text>
+          <Text
+            style={[styles.orderAmount, { color: isDark ? "#f9fafb" : "#111" }]}
+          >
+            ৳{amount.toLocaleString()}
+          </Text>
           {dueAmt > 0 ? (
-            <View style={styles.dueBadge}>
-              <Text style={styles.dueBadgeText}>
-                Due ৳{dueAmt.toLocaleString()}
+            <View
+              style={[
+                styles.badge,
+                { backgroundColor: isDark ? "#431407" : "#fff7ed" },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.badgeText,
+                  { color: isDark ? "#fb923c" : "#c2410c" },
+                ]}
+              >
+                বকেয়া ৳{dueAmt.toLocaleString()}
               </Text>
             </View>
           ) : (
-            <View style={styles.paidBadge}>
-              <Text style={styles.paidBadgeText}>✓ Paid</Text>
+            <View
+              style={[
+                styles.badge,
+                { backgroundColor: isDark ? "#14532d" : "#f0fdf4" },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.badgeText,
+                  { color: isDark ? "#4ade80" : "#15803d" },
+                ]}
+              >
+                ✓ পরিশোধিত
+              </Text>
             </View>
           )}
-          <View style={[styles.statusPill, { backgroundColor: statusCfg.bg }]}>
+          <View
+            style={[
+              styles.statusPill,
+              { backgroundColor: isDark ? statusCfg.darkBg : statusCfg.bg },
+            ]}
+          >
             <View
               style={[styles.statusDot, { backgroundColor: statusCfg.dot }]}
             />
-            <Text style={[styles.statusText, { color: statusCfg.color }]}>
+            <Text
+              style={[
+                styles.statusText,
+                { color: isDark ? statusCfg.darkColor : statusCfg.color },
+              ]}
+            >
               {statusCfg.label}
             </Text>
           </View>
@@ -238,15 +340,28 @@ function SumItem({
   label,
   value,
   color,
+  isDark,
 }: {
   label: string;
   value: string;
   color?: string;
+  isDark: boolean;
 }) {
   return (
     <View style={styles.sumItem}>
-      <Text style={styles.sumLabel}>{label}</Text>
-      <Text style={[styles.sumValue, color ? { color } : {}]}>{value}</Text>
+      <Text
+        style={[styles.sumLabel, { color: isDark ? "#6b7280" : "#9ca3af" }]}
+      >
+        {label}
+      </Text>
+      <Text
+        style={[
+          styles.sumValue,
+          { color: color ?? (isDark ? "#f9fafb" : "#111") },
+        ]}
+      >
+        {value}
+      </Text>
     </View>
   );
 }
@@ -272,9 +387,9 @@ function DashboardContent({
   fetchOrders: () => void;
 }) {
   const router = useRouter();
+  const isDark = useColorScheme() === "dark";
   const ROWS_PER_PAGE = 10;
 
-  // Computed stats
   const totalOrders = allOrders.length;
   const totalAmount = allOrders.reduce(
     (s, o) => s + Number(o.payable_amount || o.total_amount || 0),
@@ -294,7 +409,6 @@ function DashboardContent({
   const deliveryRate =
     totalOrders > 0 ? Math.round((delivered / totalOrders) * 100) : 0;
 
-  // Pagination
   const tableLastPage = Math.max(
     1,
     Math.ceil(allOrders.length / ROWS_PER_PAGE),
@@ -307,8 +421,18 @@ function DashboardContent({
   const customerName = customer?.name || customer?.user_name || "অতিথি";
   const customerPhone = customer?.phone || customer?.mobile;
 
+  // Dynamic colors
+  const bgPage = isDark ? "#111827" : "#f8f9fb";
+  const bgCard = isDark ? "#1f2937" : "#fff";
+  const textPrimary = isDark ? "#f9fafb" : "#111";
+  const textMuted = isDark ? "#6b7280" : "#9ca3af";
+  const divider = isDark ? "#374151" : "#e5e7eb";
+  const rateTrack = isDark ? "#374151" : "#f3f4f6";
+  const pageBg = isDark ? "#1f2937" : "#fff";
+  const pageBorder = isDark ? "#374151" : "#e5e7eb";
+
   return (
-    <View style={styles.inner}>
+    <View style={[styles.inner, { backgroundColor: bgPage }]}>
       {/* ── Welcome Banner ── */}
       <View style={styles.welcomeBanner}>
         <View style={styles.welcomeLeft}>
@@ -317,7 +441,7 @@ function DashboardContent({
               {customerName.charAt(0).toUpperCase()}
             </Text>
           </View>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.welcomeGreeting}>
               হ্যালো, {customerName} 👋
             </Text>
@@ -336,14 +460,31 @@ function DashboardContent({
       {loading && (
         <View style={styles.loadingBox}>
           <ActivityIndicator size="large" color="#FF5533" />
-          <Text style={styles.loadingText}>অর্ডার লোড হচ্ছে…</Text>
+          <Text style={[styles.loadingText, { color: textMuted }]}>
+            অর্ডার লোড হচ্ছে…
+          </Text>
         </View>
       )}
 
       {/* ── Error ── */}
       {!loading && error && (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorText}>⚠️ {error}</Text>
+        <View
+          style={[
+            styles.errorBox,
+            {
+              backgroundColor: isDark ? "#450a0a" : "#fff3f3",
+              borderColor: isDark ? "#7f1d1d" : "#fecaca",
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.errorText,
+              { color: isDark ? "#f87171" : "#b91c1c" },
+            ]}
+          >
+            ⚠️ {error}
+          </Text>
           <TouchableOpacity
             style={styles.retryBtn}
             onPress={fetchOrders}
@@ -362,90 +503,110 @@ function DashboardContent({
             <StatCard
               delay={0}
               icon="📦"
-              label="Total Orders"
+              label="মোট অর্ডার"
               value={totalOrders}
-              sub={`${delivered} delivered`}
+              sub={`${delivered} ডেলিভারি সম্পন্ন`}
               accent="#FF5533"
+              isDark={isDark}
               onPress={() => router.push("/orders" as any)}
             />
             <StatCard
               delay={60}
               icon="💰"
-              label="Total Amount"
+              label="মোট টাকা"
               value={`৳${totalAmount.toLocaleString()}`}
-              sub="All time"
+              sub="সবসময়"
               accent="#7c3aed"
+              isDark={isDark}
             />
             <StatCard
               delay={120}
               icon="✅"
-              label="Total Paid"
+              label="মোট পরিশোধ"
               value={`৳${totalPaid.toLocaleString()}`}
-              sub="Cleared"
+              sub="পরিশোধিত"
               accent="#319F00"
+              isDark={isDark}
             />
             <StatCard
               delay={180}
               icon="⏳"
-              label="Total Due"
+              label="মোট বকেয়া"
               value={`৳${totalDue.toLocaleString()}`}
-              sub={totalDue > 0 ? "Needs attention" : "All clear"}
+              sub={totalDue > 0 ? "সতর্কতার প্রয়োজন" : "সব সম্পন্ন"}
               accent="#f59e0b"
+              isDark={isDark}
             />
             <StatCard
               delay={240}
               icon="🕐"
-              label="Pending"
+              label="অপেক্ষমাণ"
               value={pending}
-              sub="Awaiting"
+              sub="অপেক্ষারত"
               accent="#f59e0b"
+              isDark={isDark}
             />
             <StatCard
               delay={300}
               icon="🚚"
-              label="Delivered"
+              label="ডেলিভারি সম্পন্ন"
               value={delivered}
-              sub="Completed"
+              sub="সম্পন্ন"
               accent="#319F00"
+              isDark={isDark}
             />
           </View>
 
           {/* Summary Strip */}
           {totalOrders > 0 && (
-            <View style={styles.summaryStrip}>
+            <View style={[styles.summaryStrip, { backgroundColor: bgCard }]}>
               <SumItem
-                label="Orders"
+                label="অর্ডার"
                 value={String(totalOrders)}
                 color="#3b82f6"
+                isDark={isDark}
               />
-              <View style={styles.sumDivider} />
+              <View style={[styles.sumDivider, { backgroundColor: divider }]} />
               <SumItem
-                label="Spent"
+                label="ব্যয়"
                 value={`৳${totalAmount.toLocaleString()}`}
+                isDark={isDark}
               />
-              <View style={styles.sumDivider} />
+              <View style={[styles.sumDivider, { backgroundColor: divider }]} />
               <SumItem
-                label="Paid"
+                label="পরিশোধ"
                 value={`৳${totalPaid.toLocaleString()}`}
                 color="#319F00"
+                isDark={isDark}
               />
-              <View style={styles.sumDivider} />
+              <View style={[styles.sumDivider, { backgroundColor: divider }]} />
               <SumItem
-                label="Due"
+                label="বকেয়া"
                 value={`৳${totalDue.toLocaleString()}`}
                 color={totalDue > 0 ? "#f59e0b" : "#319F00"}
+                isDark={isDark}
               />
 
-              {/* Delivery Rate */}
               <View style={styles.rateWrap}>
-                <Text style={styles.sumLabel}>Delivery Rate</Text>
+                <Text style={[styles.sumLabel, { color: textMuted }]}>
+                  ডেলিভারি হার
+                </Text>
                 <View style={styles.rateRow}>
-                  <View style={styles.rateTrack}>
+                  <View
+                    style={[styles.rateTrack, { backgroundColor: rateTrack }]}
+                  >
                     <View
                       style={[styles.rateFill, { width: `${deliveryRate}%` }]}
                     />
                   </View>
-                  <Text style={styles.ratePct}>{deliveryRate}%</Text>
+                  <Text
+                    style={[
+                      styles.ratePct,
+                      { color: isDark ? "#d1d5db" : "#374151" },
+                    ]}
+                  >
+                    {deliveryRate}%
+                  </Text>
                 </View>
               </View>
             </View>
@@ -453,9 +614,11 @@ function DashboardContent({
 
           {/* Section Header */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Order History 🧾</Text>
+            <Text style={[styles.sectionTitle, { color: textPrimary }]}>
+              অর্ডার ইতিহাস 🧾
+            </Text>
             <View style={styles.sectionBadge}>
-              <Text style={styles.sectionBadgeText}>{totalOrders} orders</Text>
+              <Text style={styles.sectionBadgeText}>{totalOrders} অর্ডার</Text>
             </View>
           </View>
 
@@ -463,7 +626,7 @@ function DashboardContent({
           {allOrders.length === 0 ? (
             <View style={styles.emptyBox}>
               <Text style={styles.emptyIcon}>🛒</Text>
-              <Text style={styles.emptyText}>
+              <Text style={[styles.emptyText, { color: textMuted }]}>
                 এখনো কোনো অর্ডার নেই। শপিং শুরু করুন!
               </Text>
               <TouchableOpacity
@@ -476,13 +639,13 @@ function DashboardContent({
             </View>
           ) : (
             <>
-              {/* Order List */}
               <View style={styles.orderList}>
                 {paginatedOrders.map((order, i) => (
                   <OrderRow
                     key={order.id}
                     order={order}
                     index={(tablePage - 1) * ROWS_PER_PAGE + i}
+                    isDark={isDark}
                   />
                 ))}
               </View>
@@ -493,12 +656,20 @@ function DashboardContent({
                   <TouchableOpacity
                     style={[
                       styles.pageBtn,
+                      { backgroundColor: pageBg, borderColor: pageBorder },
                       tablePage === 1 && styles.pageBtnDisabled,
                     ]}
                     onPress={() => setTablePage((p) => Math.max(1, p - 1))}
                     disabled={tablePage === 1}
                   >
-                    <Text style={styles.pageBtnText}>‹</Text>
+                    <Text
+                      style={[
+                        styles.pageBtnText,
+                        { color: isDark ? "#d1d5db" : "#374151" },
+                      ]}
+                    >
+                      ‹
+                    </Text>
                   </TouchableOpacity>
 
                   {Array.from({ length: tableLastPage }, (_, i) => i + 1)
@@ -519,7 +690,10 @@ function DashboardContent({
                     }, [])
                     .map((p, idx) =>
                       p === "..." ? (
-                        <Text key={`dots-${idx}`} style={styles.pageDots}>
+                        <Text
+                          key={`dots-${idx}`}
+                          style={[styles.pageDots, { color: textMuted }]}
+                        >
                           …
                         </Text>
                       ) : (
@@ -527,6 +701,10 @@ function DashboardContent({
                           key={p}
                           style={[
                             styles.pageBtn,
+                            {
+                              backgroundColor: pageBg,
+                              borderColor: pageBorder,
+                            },
                             p === tablePage && styles.pageBtnActive,
                           ]}
                           onPress={() => setTablePage(p as number)}
@@ -534,6 +712,7 @@ function DashboardContent({
                           <Text
                             style={[
                               styles.pageBtnText,
+                              { color: isDark ? "#d1d5db" : "#374151" },
                               p === tablePage && styles.pageBtnTextActive,
                             ]}
                           >
@@ -546,6 +725,7 @@ function DashboardContent({
                   <TouchableOpacity
                     style={[
                       styles.pageBtn,
+                      { backgroundColor: pageBg, borderColor: pageBorder },
                       tablePage === tableLastPage && styles.pageBtnDisabled,
                     ]}
                     onPress={() =>
@@ -553,14 +733,20 @@ function DashboardContent({
                     }
                     disabled={tablePage === tableLastPage}
                   >
-                    <Text style={styles.pageBtnText}>›</Text>
+                    <Text
+                      style={[
+                        styles.pageBtnText,
+                        { color: isDark ? "#d1d5db" : "#374151" },
+                      ]}
+                    >
+                      ›
+                    </Text>
                   </TouchableOpacity>
                 </View>
               )}
 
-              {/* Showing X–Y of Z */}
               {allOrders.length > 0 && (
-                <Text style={styles.paginationInfo}>
+                <Text style={[styles.paginationInfo, { color: textMuted }]}>
                   Showing {(tablePage - 1) * ROWS_PER_PAGE + 1}–
                   {Math.min(tablePage * ROWS_PER_PAGE, allOrders.length)} of{" "}
                   {allOrders.length} orders
@@ -571,7 +757,6 @@ function DashboardContent({
         </>
       )}
 
-      {/* Bottom padding */}
       <View style={{ height: 20 }} />
     </View>
   );
@@ -581,8 +766,6 @@ function DashboardContent({
 // Main Dashboard Screen
 // ============================================
 export default function DashboardScreen() {
-  const ROWS_PER_PAGE = 10;
-
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [allOrders, setAllOrders] = useState<Order[]>([]);
@@ -612,7 +795,6 @@ export default function DashboardScreen() {
       let allData: Order[] = [];
       let currentPage = 1;
       let lastPage = 1;
-
       do {
         const res = await getMyOrdersApi(currentPage);
         if (res.success) {
@@ -624,7 +806,6 @@ export default function DashboardScreen() {
           break;
         }
       } while (currentPage <= lastPage);
-
       setAllOrders(allData);
       setTablePage(1);
     } catch {
@@ -635,7 +816,6 @@ export default function DashboardScreen() {
     }
   };
 
-  // CommonLayout-এর onRefresh prop-এ পাঠানো হবে
   const handleRefresh = async () => {
     setRefreshing(true);
     await loadData();
@@ -646,7 +826,6 @@ export default function DashboardScreen() {
       title="ড্যাশবোর্ড"
       currentRoute="dashboard"
       onRefresh={handleRefresh}
-      // hideCartPreview={true} — চাইলে cart preview লুকাতে পারেন
     >
       <DashboardContent
         loading={loading}
@@ -662,18 +841,15 @@ export default function DashboardScreen() {
 }
 
 // ============================================
-// Styles
+// Styles — শুধু theme-independent জিনিস এখানে
+// theme-dependent রং inline style-এ দেওয়া হয়েছে
 // ============================================
 const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
 
 const styles = StyleSheet.create({
-  inner: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    backgroundColor: "#f8f9fb",
-  },
+  inner: { paddingHorizontal: 16, paddingTop: 16, flex: 1 },
 
-  // ── Welcome Banner ──
+  // Welcome
   welcomeBanner: {
     backgroundColor: "#FF5533",
     borderRadius: 20,
@@ -688,12 +864,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-  welcomeLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    flex: 1,
-  },
+  welcomeLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
   avatarCircle: {
     width: 44,
     height: 44,
@@ -704,22 +875,14 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "rgba(255,255,255,0.5)",
   },
-  avatarText: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "800",
-  },
+  avatarText: { color: "#fff", fontSize: 20, fontWeight: "800" },
   welcomeGreeting: {
     fontSize: 16,
     fontWeight: "700",
     color: "#fff",
     letterSpacing: -0.3,
   },
-  welcomePhone: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.8)",
-    marginTop: 2,
-  },
+  welcomePhone: { fontSize: 12, color: "rgba(255,255,255,0.8)", marginTop: 2 },
   activeBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -735,51 +898,30 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: "#4ade80",
   },
-  activeBadgeText: {
-    fontSize: 12,
-    color: "#fff",
-    fontWeight: "600",
-  },
+  activeBadgeText: { fontSize: 12, color: "#fff", fontWeight: "600" },
 
-  // ── Loading ──
-  loadingBox: {
-    alignItems: "center",
-    paddingVertical: 60,
-    gap: 14,
-  },
-  loadingText: {
-    fontSize: 15,
-    color: "#888",
-  },
+  // Loading
+  loadingBox: { alignItems: "center", paddingVertical: 60, gap: 14 },
+  loadingText: { fontSize: 15 },
 
-  // ── Error ──
+  // Error
   errorBox: {
-    backgroundColor: "#fff3f3",
     borderRadius: 14,
     padding: 20,
     alignItems: "center",
     gap: 12,
     borderWidth: 1,
-    borderColor: "#fecaca",
   },
-  errorText: {
-    fontSize: 14,
-    color: "#b91c1c",
-    textAlign: "center",
-  },
+  errorText: { fontSize: 14, textAlign: "center" },
   retryBtn: {
     backgroundColor: "#FF5533",
     borderRadius: 10,
     paddingHorizontal: 22,
     paddingVertical: 10,
   },
-  retryBtnText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 14,
-  },
+  retryBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 
-  // ── Stat Cards ──
+  // Stat Cards
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -788,7 +930,6 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: CARD_WIDTH,
-    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 16,
     shadowColor: "#000",
@@ -808,14 +949,9 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
   },
-  statIcon: {
-    fontSize: 24,
-    marginBottom: 8,
-    marginTop: 4,
-  },
+  statIcon: { fontSize: 24, marginBottom: 8, marginTop: 4 },
   statLabel: {
     fontSize: 11,
-    color: "#9ca3af",
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.4,
@@ -827,14 +963,10 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     marginBottom: 3,
   },
-  statSub: {
-    fontSize: 11,
-    color: "#aaa",
-  },
+  statSub: { fontSize: 11 },
 
-  // ── Summary Strip ──
+  // Summary Strip
   summaryStrip: {
-    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
@@ -848,98 +980,42 @@ const styles = StyleSheet.create({
     gap: 10,
     alignItems: "center",
   },
-  sumItem: {
-    alignItems: "center",
-    minWidth: 60,
-  },
+  sumItem: { alignItems: "center", minWidth: 60 },
   sumLabel: {
     fontSize: 10,
-    color: "#9ca3af",
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.3,
     marginBottom: 2,
   },
-  sumValue: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#111",
-    letterSpacing: -0.3,
-  },
-  sumDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: "#e5e7eb",
-  },
-  rateWrap: {
-    flex: 1,
-    minWidth: 100,
-  },
-  rateRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 2,
-  },
-  rateTrack: {
-    flex: 1,
-    height: 6,
-    backgroundColor: "#f3f4f6",
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  rateFill: {
-    height: "100%",
-    backgroundColor: "#319F00",
-    borderRadius: 3,
-  },
-  ratePct: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#374151",
-    minWidth: 28,
-  },
+  sumValue: { fontSize: 14, fontWeight: "800", letterSpacing: -0.3 },
+  sumDivider: { width: 1, height: 28 },
+  rateWrap: { flex: 1, minWidth: 100 },
+  rateRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
+  rateTrack: { flex: 1, height: 6, borderRadius: 3, overflow: "hidden" },
+  rateFill: { height: "100%", backgroundColor: "#319F00", borderRadius: 3 },
+  ratePct: { fontSize: 11, fontWeight: "700", minWidth: 28 },
 
-  // ── Section Header ──
+  // Section Header
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 12,
   },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: "#111",
-    letterSpacing: -0.3,
-  },
+  sectionTitle: { fontSize: 17, fontWeight: "800", letterSpacing: -0.3 },
   sectionBadge: {
     backgroundColor: "#FF5533",
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 3,
   },
-  sectionBadgeText: {
-    fontSize: 11,
-    color: "#fff",
-    fontWeight: "700",
-  },
+  sectionBadgeText: { fontSize: 11, color: "#fff", fontWeight: "700" },
 
-  // ── Empty ──
-  emptyBox: {
-    alignItems: "center",
-    paddingVertical: 50,
-    gap: 12,
-  },
-  emptyIcon: {
-    fontSize: 48,
-  },
-  emptyText: {
-    fontSize: 15,
-    color: "#6b7280",
-    fontWeight: "500",
-    textAlign: "center",
-  },
+  // Empty
+  emptyBox: { alignItems: "center", paddingVertical: 50, gap: 12 },
+  emptyIcon: { fontSize: 48 },
+  emptyText: { fontSize: 15, fontWeight: "500", textAlign: "center" },
   shopBtn: {
     backgroundColor: "#FF5533",
     borderRadius: 12,
@@ -947,18 +1023,11 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     marginTop: 4,
   },
-  shopBtnText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 14,
-  },
+  shopBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 
-  // ── Order List ──
-  orderList: {
-    gap: 10,
-  },
+  // Order List
+  orderList: { gap: 10 },
   orderRow: {
-    backgroundColor: "#fff",
     borderRadius: 14,
     padding: 14,
     flexDirection: "row",
@@ -970,56 +1039,14 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
-  orderLeft: {
-    flex: 1,
-    gap: 3,
-  },
-  orderId: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#111",
-    letterSpacing: -0.2,
-  },
-  orderDate: {
-    fontSize: 12,
-    color: "#9ca3af",
-  },
-  orderItems: {
-    fontSize: 12,
-    color: "#6b7280",
-  },
-  orderRight: {
-    alignItems: "flex-end",
-    gap: 5,
-  },
-  orderAmount: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#111",
-    letterSpacing: -0.3,
-  },
-  dueBadge: {
-    backgroundColor: "#fff7ed",
-    borderRadius: 6,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-  },
-  dueBadgeText: {
-    fontSize: 11,
-    color: "#c2410c",
-    fontWeight: "700",
-  },
-  paidBadge: {
-    backgroundColor: "#f0fdf4",
-    borderRadius: 6,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-  },
-  paidBadgeText: {
-    fontSize: 11,
-    color: "#15803d",
-    fontWeight: "700",
-  },
+  orderLeft: { flex: 1, gap: 3 },
+  orderId: { fontSize: 15, fontWeight: "800", letterSpacing: -0.2 },
+  orderDate: { fontSize: 12 },
+  orderItems: { fontSize: 12 },
+  orderRight: { alignItems: "flex-end", gap: 5 },
+  orderAmount: { fontSize: 15, fontWeight: "800", letterSpacing: -0.3 },
+  badge: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
+  badgeText: { fontSize: 11, fontWeight: "700" },
   statusPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -1028,17 +1055,10 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     gap: 4,
   },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusText: { fontSize: 11, fontWeight: "700" },
 
-  // ── Pagination ──
+  // Pagination
   pagination: {
     flexDirection: "row",
     justifyContent: "center",
@@ -1051,11 +1071,9 @@ const styles = StyleSheet.create({
     minWidth: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#e5e7eb",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -1063,30 +1081,14 @@ const styles = StyleSheet.create({
     elevation: 1,
     paddingHorizontal: 10,
   },
-  pageBtnActive: {
-    backgroundColor: "#FF5533",
-    borderColor: "#FF5533",
-  },
-  pageBtnDisabled: {
-    opacity: 0.35,
-  },
-  pageBtnText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#374151",
-  },
-  pageBtnTextActive: {
-    color: "#fff",
-  },
-  pageDots: {
-    fontSize: 14,
-    color: "#9ca3af",
-    paddingHorizontal: 4,
-  },
+  pageBtnActive: { backgroundColor: "#FF5533", borderColor: "#FF5533" },
+  pageBtnDisabled: { opacity: 0.35 },
+  pageBtnText: { fontSize: 14, fontWeight: "700" },
+  pageBtnTextActive: { color: "#fff" },
+  pageDots: { fontSize: 14, paddingHorizontal: 4 },
   paginationInfo: {
     textAlign: "center",
     fontSize: 12,
-    color: "#9ca3af",
     marginTop: 8,
     marginBottom: 4,
   },

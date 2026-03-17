@@ -437,13 +437,10 @@ export const getMyOrdersApi = async (page: number = 1) => {
       };
     }
 
-    const url =
-      page > 1
-        ? `${API_BASE_URL}/my-orders?page=${page}`
-        : `${API_BASE_URL}/my-orders`;
+    const url = `${API_BASE_URL}/my-orders?page=${page}`;
 
     const response = await fetch(url, {
-      method: "POST",
+      method: "GET",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",

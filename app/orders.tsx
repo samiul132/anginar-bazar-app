@@ -169,7 +169,11 @@ export default function Orders() {
 
   if (loading) {
     return (
-      <CommonLayout title="আমার অর্ডার" currentRoute="" onRefresh={handleRefresh}>
+      <CommonLayout
+        title="আমার অর্ডার"
+        currentRoute=""
+        onRefresh={handleRefresh}
+      >
         <View className="flex-1 items-center justify-center bg-gray-50 dark:bg-gray-900">
           <ActivityIndicator size="large" color="#ff0000" />
           <Text className="mt-4 text-gray-600 dark:text-gray-400">
@@ -182,7 +186,11 @@ export default function Orders() {
 
   if (!isAuthenticated) {
     return (
-      <CommonLayout title="আমার অর্ডার" currentRoute="" onRefresh={handleRefresh}>
+      <CommonLayout
+        title="আমার অর্ডার"
+        currentRoute=""
+        onRefresh={handleRefresh}
+      >
         <View className="flex-1 items-center justify-center bg-gray-50 dark:bg-gray-900 px-6">
           <View className="w-24 h-24 bg-primary-100 dark:bg-primary-900 rounded-full items-center justify-center mb-6">
             <Ionicons name="receipt-outline" size={48} color="#059669" />
@@ -323,6 +331,14 @@ export default function Orders() {
                 </View>
               </TouchableOpacity>
             ))}
+
+            {/* scroll button */}
+            <TouchableOpacity
+              onPress={handleLoadMore}
+              className="py-4 items-center bg-primary-600 rounded-xl mb-3"
+            >
+              <Text className="text-white font-bold">আরও দেখুন...</Text>
+            </TouchableOpacity>
 
             {/* Loading More Indicator */}
             {loadingMore && (

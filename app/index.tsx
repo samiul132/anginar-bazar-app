@@ -126,7 +126,7 @@ const Footer = () => {
   );
 };
 
-// ── Category Section আলাদা memo — অন্য category change এ re-render হবে না ──
+// ── Category Section
 const CategorySection = ({
   category,
   index,
@@ -218,8 +218,9 @@ export default function Index() {
   const cartItemsCount = cartItems.length;
 
   const scrollY = useRef(new Animated.Value(0)).current;
+  const openMenuRef = useRef<(() => void) | null>(null);
 
-  // ── featured categories সরাসরি homeData থেকে ──
+  // ── featured categories
   const [featuredCategories, setFeaturedCategories] = useState<
     FeaturedCategory[]
   >([]);
@@ -312,7 +313,7 @@ export default function Index() {
   const onScroll = useMemo(
     () =>
       Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
     [scrollY],
   );
@@ -328,6 +329,7 @@ export default function Index() {
       currentRoute="index"
       hideScrollView={true}
       scrollY={scrollY}
+      openMenuRef={openMenuRef}
     >
       {pageLoading ? (
         <View className="flex-1 bg-gray-100 dark:bg-gray-900 items-center justify-center">
@@ -350,27 +352,84 @@ export default function Index() {
             }}
             className="px-4 py-2 bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700"
           >
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push("/search");
-              }}
-              className="bg-gray-50 dark:bg-gray-900 rounded-2xl flex-row items-center px-4 py-2.5 border border-gray-200 dark:border-gray-600 shadow-sm"
-            >
-              <Ionicons
-                name="search-outline"
-                size={22}
-                color={isDark ? "#9ca3af" : "#6b7280"}
-              />
-              <Text className="flex-1 ml-3 text-base text-gray-500 dark:text-gray-400">
-                পণ্য খুঁজুন...
-              </Text>
-              <Ionicons
-                name="options-outline"
-                size={20}
-                color={isDark ? "#9ca3af" : "#6b7280"}
-              />
-            </TouchableOpacity>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              {/* Menu Button */}
+              <Animated.View
+                style={{
+                  width: scrollY.interpolate({
+                    inputRange: [0, 40],
+                    outputRange: [0, 36],
+                    extrapolate: "clamp",
+                  }),
+                  marginRight: scrollY.interpolate({
+                    inputRange: [0, 40],
+                    outputRange: [0, 8],
+                    extrapolate: "clamp",
+                  }),
+                  opacity: scrollY.interpolate({
+                    inputRange: [0, 40],
+                    outputRange: [0, 1],
+                    extrapolate: "clamp",
+                  }),
+                  overflow: "hidden",
+                }}
+              >
+                <TouchableOpacity
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    openMenuRef.current?.();
+                  }}
+                  style={{ width: 36, alignItems: "center" }}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons
+                    name="menu-outline"
+                    size={28}
+                    color={isDark ? "#fff" : "#111"}
+                  />
+                </TouchableOpacity>
+              </Animated.View>
+
+              {/* Search Button */}
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push("/search");
+                }}
+                style={{
+                  flex: 1,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: isDark ? "#111827" : "#f9fafb",
+                  borderRadius: 16,
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderWidth: 1,
+                  borderColor: isDark ? "#4b5563" : "#e5e7eb",
+                }}
+              >
+                <Ionicons
+                  name="search-outline"
+                  size={22}
+                  color={isDark ? "#9ca3af" : "#6b7280"}
+                />
+                <Text
+                  style={{
+                    flex: 1,
+                    marginLeft: 12,
+                    fontSize: 16,
+                    color: isDark ? "#9ca3af" : "#6b7280",
+                  }}
+                >
+                  পণ্য খুঁজুন...
+                </Text>
+                <Ionicons
+                  name="options-outline"
+                  size={20}
+                  color={isDark ? "#9ca3af" : "#6b7280"}
+                />
+              </TouchableOpacity>
+            </View>
           </Animated.View>
 
           <Animated.ScrollView
