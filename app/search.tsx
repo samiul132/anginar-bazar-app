@@ -4,7 +4,6 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   ScrollView,
   Text,
   TextInput,
@@ -13,6 +12,7 @@ import {
   useColorScheme,
 } from "react-native";
 import CommonLayout from "../components/CommonLayout";
+import ProductCard from "../components/ProductCard";
 import { API_BASE_URL } from "../config/api";
 
 interface Product {
@@ -267,43 +267,22 @@ export default function Search() {
                     অনুসন্ধান ফলাফল ({searchResults.length})
                   </Text>
                   {searchResults.length > 0 ? (
-                    searchResults.map((product) => (
-                      <TouchableOpacity
-                        key={product.id}
-                        onPress={() =>
-                          router.push(`/productDetails?slug=${product.slug}`)
-                        }
-                        className="bg-white dark:bg-gray-800 rounded-2xl p-3 mb-3 flex-row"
-                      >
-                        <Image
-                          source={{ uri: product.image }}
-                          className="w-20 h-20 rounded-xl"
-                          resizeMode="cover"
+                    <View className="flex-row flex-wrap justify-between">
+                      {searchResults.map((product) => (
+                        <ProductCard
+                          key={product.id}
+                          product={{
+                            id: product.id,
+                            product_name: product.name,
+                            image: product.image,
+                            sale_price: String(product.price),
+                            promotional_price: String(product.promotionalPrice),
+                            slug: product.slug,
+                          }}
+                          cardWidth={180}
                         />
-                        <View className="flex-1 ml-3 justify-center">
-                          <Text className="text-gray-800 dark:text-white font-semibold mb-1">
-                            {product.name}
-                          </Text>
-
-                          {/* Promotional price থাকলে সেটা দেখাও, না হলে sale_price */}
-                          {product.promotionalPrice > 0 &&
-                          product.promotionalPrice < product.price ? (
-                            <View className="flex-row items-center gap-2">
-                              <Text className="text-primary-600 dark:text-primary-400 font-bold">
-                                ৳{product.promotionalPrice}
-                              </Text>
-                              <Text className="text-gray-400 line-through text-sm">
-                                ৳{product.price}
-                              </Text>
-                            </View>
-                          ) : (
-                            <Text className="text-primary-600 dark:text-primary-400 font-bold">
-                              ৳{product.price}
-                            </Text>
-                          )}
-                        </View>
-                      </TouchableOpacity>
-                    ))
+                      ))}
+                    </View>
                   ) : (
                     <View className="flex-1 justify-center items-center py-10">
                       <Ionicons

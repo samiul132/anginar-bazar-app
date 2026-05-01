@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -63,18 +63,15 @@ export default function OrderDetails() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Get delivery time message based on BD timezone
   const getDeliveryTimeMessage = () => {
     if (!order) return { show: false };
 
-    // Get current time in Bangladesh (UTC+6)
     const now = new Date();
     const bdTime = new Date(
       now.toLocaleString("en-US", { timeZone: "Asia/Dhaka" }),
     );
     const currentHour = bdTime.getHours();
 
-    // Get order date in BD timezone
     const orderDate = new Date(order.created_at);
     const orderBdTime = new Date(
       orderDate.toLocaleString("en-US", { timeZone: "Asia/Dhaka" }),
@@ -108,23 +105,25 @@ export default function OrderDetails() {
 
     // If order placed after 5 PM
     if (orderHour >= 17) {
-      if (isToday) {
-        return {
-          show: true,
-          message: "আপনার অর্ডারটি আগামীকাল সকাল ৮টার পর ডেলিভারি শুরু হবে",
-          icon: "calendar-outline",
-          bgColor: "bg-orange-50 dark:bg-orange-900/20",
-          borderColor: "border-orange-200 dark:border-orange-800",
-          textColor: "text-orange-800 dark:text-orange-300",
-          iconColor: "#f97316",
-        };
-      }
+      return {
+        show: true,
+        message: isToday
+          ? "আপনার অর্ডারটি আগামীকাল সকাল ৮টার পর ডেলিভারি শুরু হবে"
+          : "আপনার অর্ডারটি সকাল ৮টার পর ডেলিভারি শুরু হবে",
+        icon: "calendar-outline",
+        bgColor: "bg-orange-50 dark:bg-orange-900/20",
+        borderColor: "border-orange-200 dark:border-orange-800",
+        textColor: "text-orange-800 dark:text-orange-300",
+        iconColor: "#f97316",
+      };
     }
 
     return { show: false };
   };
 
-  const deliveryTimeInfo = getDeliveryTimeMessage();
+  const deliveryTimeInfo = useMemo(() => getDeliveryTimeMessage(), [order]);
+
+  //const deliveryTimeInfo = getDeliveryTimeMessage();
 
   useEffect(() => {
     if (id) {

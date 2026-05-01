@@ -242,6 +242,9 @@ export const updateAddressApi = async (
     district_id: number;
     upazila_id: number;
     is_default?: boolean;
+    latitude?: number;
+    longitude?: number;
+    city?: string;
   },
 ) => {
   try {
@@ -255,6 +258,14 @@ export const updateAddressApi = async (
     console.error("Error updating address:", error);
     throw error;
   }
+};
+
+export const updateProfileNameApi = async (name: string) => {
+  const response = await apiRequest("/update-profile-name", "POST", { name });
+  if (response.success && response.user) {
+    await setCustomerData(response.user);
+  }
+  return response;
 };
 
 // ============================================
@@ -440,7 +451,7 @@ export const getMyOrdersApi = async (page: number = 1) => {
     const url = `${API_BASE_URL}/my-orders?page=${page}`;
 
     const response = await fetch(url, {
-      method: "GET",
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",

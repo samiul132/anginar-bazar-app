@@ -145,7 +145,7 @@ export default function CategoryDetails() {
     applyFiltersAndSort();
   }, [products, sortBy, priceRange, selectedBrands]);
 
-  // ── Fetch products ────────────────────────────────────────────────────────────
+  // ── Fetch products ───────
 
   const fetchCategoryProducts = async (page: number, isInitial = false) => {
     if (isLoadingRef.current) return;
@@ -187,10 +187,28 @@ export default function CategoryDetails() {
             setTempPriceRange({ min, max });
           }
         } else {
-          allProductsRef.current = [...allProductsRef.current, ...fetched];
-          setProducts([...allProductsRef.current]);
+          const newAll = [...allProductsRef.current, ...fetched];
+          allProductsRef.current = newAll;
+          setProducts([...newAll]);
           setCurrentPage(response.data.products.current_page);
           setLastPage(response.data.products.last_page);
+
+          const allPrices = newAll
+            .map((p) => {
+              const promo = parseFloat(p.promotional_price);
+              const sale = parseFloat(p.sale_price);
+              return promo > 0 && promo < sale ? promo : sale;
+            })
+            .filter((price) => !isNaN(price));
+
+          if (allPrices.length > 0) {
+            const newMin = Math.floor(Math.min(...allPrices));
+            const newMax = Math.ceil(Math.max(...allPrices));
+            setGlobalMin(newMin);
+            setGlobalMax(newMax);
+            setPriceRange({ min: newMin, max: newMax });
+            setTempPriceRange({ min: newMin, max: newMax });
+          }
         }
 
         extractBrands(allProductsRef.current);
@@ -274,17 +292,23 @@ export default function CategoryDetails() {
   }: any) =>
     layoutMeasurement.height + contentOffset.y >= contentSize.height - 20;
 
-  // ── Filter & Sort ─────────────────────────────────────────────────────────────
+  // ── Filter & Sort ─────
 
   const applyFiltersAndSort = () => {
-    let filtered = [...products];
-
-    filtered = filtered.filter((p) => {
+    const getPrice = (p: Product) => {
       const promo = parseFloat(p.promotional_price);
       const sale = parseFloat(p.sale_price);
-      const price = promo > 0 && promo < sale ? promo : sale;
-      return price >= priceRange.min && price <= priceRange.max;
-    });
+      return promo > 0 && promo < sale ? promo : sale;
+    };
+
+    let filtered = [...products];
+
+    if (priceRange.min > globalMin || priceRange.max < globalMax) {
+      filtered = filtered.filter((p) => {
+        const price = getPrice(p);
+        return price >= priceRange.min && price <= priceRange.max;
+      });
+    }
 
     if (selectedBrands.length > 0) {
       filtered = filtered.filter(
@@ -292,11 +316,6 @@ export default function CategoryDetails() {
       );
     }
 
-    const getPrice = (p: Product) => {
-      const promo = parseFloat(p.promotional_price);
-      const sale = parseFloat(p.sale_price);
-      return promo > 0 && promo < sale ? promo : sale;
-    };
     switch (sortBy) {
       case "price_low":
         filtered.sort((a, b) => getPrice(a) - getPrice(b));
@@ -315,7 +334,7 @@ export default function CategoryDetails() {
     setFilteredProducts(filtered);
   };
 
-  // ── Modal helpers ─────────────────────────────────────────────────────────────
+  // ── Modal helpers ──────
 
   const openFilters = () => {
     setTempPriceRange({ ...priceRange });
@@ -356,7 +375,7 @@ export default function CategoryDetails() {
   const removeBrand = (id: number) =>
     setSelectedBrands((prev) => prev.filter((b) => b !== id));
 
-  // ── Navigation ────────────────────────────────────────────────────────────────
+  // ── Navigation ────────
 
   const handleSubCategoryPress = (sub: SubCategory) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -368,7 +387,7 @@ export default function CategoryDetails() {
     router.push(`/brandDetails?slug=${brand.slug}`);
   };
 
-  // ── Computed ──────────────────────────────────────────────────────────────────
+  // ── Computed ──────────
 
   const isPriceFiltered =
     priceRange.min > globalMin || priceRange.max < globalMax;
@@ -386,7 +405,7 @@ export default function CategoryDetails() {
     return `https://app.anginarbazar.com/uploads/images/thumbnail/${imagePath}`;
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────────
+  // ── Render ────────────
 
   return (
     <CommonLayout
@@ -396,7 +415,7 @@ export default function CategoryDetails() {
       onRefresh={handleRefresh}
     >
       <View className="flex-1 bg-gray-50 dark:bg-gray-900">
-        {/* ── Banner ───────────────────────────────────────────────────────────── */}
+        {/* ── Banner  */}
         <ImageBackground
           source={{
             uri: categoryData?.catInfo?.banner
@@ -829,7 +848,7 @@ export default function CategoryDetails() {
         )}
       </View>
 
-      {/* ── Filter Modal ──────────────────────────────────────────────────────── */}
+      {/* ── Filter Modal  */}
       <Modal
         visible={showFilters}
         animationType="slide"

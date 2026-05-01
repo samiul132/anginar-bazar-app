@@ -30,6 +30,7 @@ import {
   updateAddressApi,
 } from "../config/api";
 import { useCart } from "../contexts/CartContext";
+import { useLocation } from "../contexts/LocationContext";
 
 // Helper: API returns is_default as boolean (true/false) OR number (1/0)
 const isDefaultAddress = (addr: any): boolean => {
@@ -41,6 +42,7 @@ export default function Checkout() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const { cartItems, getCartTotal, clearCart } = useCart();
+  const { location } = useLocation();
 
   const [loading, setLoading] = useState(true);
   const [placing, setPlacing] = useState(false);
@@ -335,6 +337,29 @@ export default function Checkout() {
       });
     } finally {
       setAddingAddress(false);
+    }
+  };
+
+  const handleSelectAddress = async (addressId: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedAddressId(addressId);
+
+    try {
+      const address = addresses.find((addr) => addr.id === addressId);
+      if (!address) return;
+
+      await updateAddressApi(addressId, {
+        street_address: address.street_address,
+        division_id: address.division_id,
+        district_id: address.district_id,
+        upazila_id: address.upazila_id,
+        is_default: isDefaultAddress(address),
+        latitude: location.latitude,
+        longitude: location.longitude,
+        city: location.city,
+      });
+    } catch (error) {
+      console.error("Location save error:", error);
     }
   };
 
@@ -734,12 +759,13 @@ export default function Checkout() {
                       }}
                     >
                       <TouchableOpacity
-                        onPress={() => {
-                          Haptics.impactAsync(
-                            Haptics.ImpactFeedbackStyle.Light,
-                          );
-                          setSelectedAddressId(address.id);
-                        }}
+                        // onPress={() => {
+                        //   Haptics.impactAsync(
+                        //     Haptics.ImpactFeedbackStyle.Light,
+                        //   );
+                        //   setSelectedAddressId(address.id);
+                        // }}
+                        onPress={() => handleSelectAddress(address.id)}
                         className={`flex-row items-start p-4 rounded-xl ${
                           selectedAddressId === address.id
                             ? "bg-primary-50 dark:bg-primary-900/20 border-2 border-primary-600"

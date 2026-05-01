@@ -1,31 +1,39 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  useColorScheme,
+  View,
 } from "react-native";
 import Toast from "react-native-toast-message";
 import CommonLayout from "../../components/CommonLayout";
 import {
-    addAddressApi,
-    deleteAddressApi,
-    getAddressApi,
-    getCustomerData,
-    updateAddressApi,
+  addAddressApi,
+  deleteAddressApi,
+  getAddressApi,
+  getCustomerData,
+  updateAddressApi,
+  updateProfileNameApi,
 } from "../../config/api";
 
-const isDefaultAddress = (addr: any): boolean => {
-  return addr.is_default === true || addr.is_default === 1;
-};
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+const isDefaultAddress = (addr: any): boolean =>
+  addr.is_default === true || addr.is_default === 1;
 
 const locationData = {
   division: { id: 1, name: "Chattagram", bn_name: "চট্টগ্রাম" },
@@ -33,9 +41,235 @@ const locationData = {
   upazila: { id: 58, name: "Matlab North", bn_name: "মতলব উত্তর" },
 };
 
+// ─── Theme colors ─────────────────────────────────────────────────────────────
+function useTheme() {
+  const scheme = useColorScheme();
+  const dark = scheme === "dark";
+  return {
+    dark,
+    // backgrounds
+    bg: dark ? "#111827" : "#f9fafb",
+    card: dark ? "#1f2937" : "#ffffff",
+    cardAlt: dark ? "#374151" : "#fafafa",
+    input: dark ? "#374151" : "#f9fafb",
+    profileBg: dark ? "#052e16" : "#f0fdf4",
+    profileBorder: dark ? "#14532d" : "#bbf7d0",
+    emptyBorder: dark ? "#14532d" : "#d1fae5",
+    // text
+    textPrimary: dark ? "#f9fafb" : "#111827",
+    textSecondary: dark ? "#d1d5db" : "#374151",
+    textMuted: dark ? "#9ca3af" : "#6b7280",
+    textGreen: dark ? "#34d399" : "#059669",
+    textDarkGreen: dark ? "#a7f3d0" : "#064e3b",
+    // borders
+    border: dark ? "#374151" : "#e5e7eb",
+    borderTop: dark ? "#374151" : "#f3f4f6",
+    // icon bg
+    iconBgGray: dark ? "#374151" : "#f3f4f6",
+    iconColorGray: dark ? "#6b7280" : "#9ca3af",
+    editBg: dark ? "#1e3a5f" : "#eff6ff",
+    deleteBg: dark ? "#450a0a" : "#fff1f2",
+    // modal
+    modalBg: dark ? "#1f2937" : "#ffffff",
+    handleBar: dark ? "#374151" : "#e5e7eb",
+    closeBtnBg: dark ? "#374151" : "#f3f4f6",
+  };
+}
+
+// ─── Bottom Sheet Modal ───────────────────────────────────────────────────────
+function AddressModal({
+  visible,
+  onClose,
+  onSave,
+  initialValue = "",
+  title,
+  saving,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSave: (text: string) => void;
+  initialValue?: string;
+  title: string;
+  saving: boolean;
+}) {
+  const t = useTheme();
+  const [text, setText] = useState(initialValue);
+  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+
+  useEffect(() => {
+    setText(initialValue);
+  }, [initialValue, visible]);
+
+  useEffect(() => {
+    if (visible) {
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 65,
+        friction: 11,
+      }).start();
+    } else {
+      Animated.timing(slideAnim, {
+        toValue: SCREEN_HEIGHT,
+        duration: 220,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [visible]);
+
+  const handleSave = () => {
+    if (!text.trim()) {
+      Toast.show({
+        type: "error",
+        text1: "ঠিকানা খালি রাখা যাবে না",
+        position: "top",
+      });
+      return;
+    }
+    onSave(text.trim());
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            justifyContent: "flex-end",
+          }}
+        >
+          <TouchableWithoutFeedback>
+            <Animated.View style={{ transform: [{ translateY: slideAnim }] }}>
+              <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+              >
+                <View
+                  style={{
+                    backgroundColor: t.modalBg,
+                    borderTopLeftRadius: 24,
+                    borderTopRightRadius: 24,
+                    paddingHorizontal: 20,
+                    paddingTop: 12,
+                    paddingBottom: Platform.OS === "ios" ? 36 : 24,
+                  }}
+                >
+                  {/* Handle */}
+                  <View
+                    style={{
+                      width: 40,
+                      height: 4,
+                      borderRadius: 2,
+                      backgroundColor: t.handleBar,
+                      alignSelf: "center",
+                      marginBottom: 16,
+                    }}
+                  />
+
+                  {/* Header */}
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 16,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 18,
+                        fontWeight: "700",
+                        color: t.textPrimary,
+                      }}
+                    >
+                      {title}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={onClose}
+                      style={{
+                        padding: 6,
+                        backgroundColor: t.closeBtnBg,
+                        borderRadius: 20,
+                      }}
+                    >
+                      <Ionicons name="close" size={20} color={t.textMuted} />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Input */}
+                  <View
+                    style={{
+                      backgroundColor: t.input,
+                      borderRadius: 12,
+                      borderWidth: 1.5,
+                      borderColor: "#059669",
+                      padding: 14,
+                      marginBottom: 16,
+                    }}
+                  >
+                    <TextInput
+                      value={text}
+                      onChangeText={setText}
+                      placeholder="বাড়ি নম্বর, রাস্তা, এলাকা লিখুন..."
+                      placeholderTextColor={t.textMuted}
+                      multiline
+                      numberOfLines={4}
+                      textAlignVertical="top"
+                      style={{
+                        fontSize: 15,
+                        color: t.textPrimary,
+                        minHeight: 90,
+                        lineHeight: 22,
+                      }}
+                      autoFocus
+                    />
+                  </View>
+
+                  {/* Save button */}
+                  <TouchableOpacity
+                    onPress={handleSave}
+                    disabled={saving}
+                    style={{
+                      backgroundColor: saving ? "#6b7280" : "#059669",
+                      borderRadius: 14,
+                      paddingVertical: 15,
+                      alignItems: "center",
+                    }}
+                  >
+                    {saving ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Text
+                        style={{
+                          color: "#fff",
+                          fontWeight: "700",
+                          fontSize: 16,
+                        }}
+                      >
+                        সংরক্ষণ করুন
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </KeyboardAvoidingView>
+            </Animated.View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
+  );
+}
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function EditProfile() {
   const router = useRouter();
   const { redirect } = useLocalSearchParams();
+  const t = useTheme();
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -43,12 +277,13 @@ export default function EditProfile() {
   const [loadingData, setLoadingData] = useState(true);
   const [addressesLoading, setAddressesLoading] = useState(false);
 
-  const [editingAddressId, setEditingAddressId] = useState<number | null>(null);
-  const [editingText, setEditingText] = useState("");
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalMode, setModalMode] = useState<"add" | "edit">("add");
+  const [editingAddress, setEditingAddress] = useState<any | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const [showNewAddressField, setShowNewAddressField] = useState(false);
-  const [newAddress, setNewAddress] = useState("");
-  const [addingAddress, setAddingAddress] = useState(false);
+  const [nameModalVisible, setNameModalVisible] = useState(false);
+  const [savingName, setSavingName] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -73,103 +308,112 @@ export default function EditProfile() {
     setAddressesLoading(true);
     try {
       const response = await getAddressApi();
-      if (
-        response.success &&
-        response.data?.addressList &&
-        Array.isArray(response.data.addressList)
-      ) {
+      if (response.success && Array.isArray(response.data?.addressList)) {
         setAddresses(response.data.addressList);
       } else {
         setAddresses([]);
       }
-    } catch (error) {
-      console.error("Error fetching addresses:", error);
+    } catch {
       setAddresses([]);
     } finally {
       setAddressesLoading(false);
     }
   };
 
-  const handleAddNewAddress = async () => {
-    if (!newAddress.trim()) {
-      Toast.show({
-        type: "error",
-        text1: "ঠিকানা খালি",
-        text2: "ঠিকানা লিখুন",
-        position: "bottom",
-      });
-      return;
-    }
-    setAddingAddress(true);
+  const openAdd = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setModalMode("add");
+    setEditingAddress(null);
+    setModalVisible(true);
+  };
+
+  const openEdit = (address: any) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setModalMode("edit");
+    setEditingAddress(address);
+    setModalVisible(true);
+  };
+
+  const closeModal = () => {
+    if (saving) return;
+    setModalVisible(false);
+    setEditingAddress(null);
+  };
+
+  const handleSave = async (text: string) => {
+    setSaving(true);
     try {
-      const response = await addAddressApi({
-        street_address: newAddress.trim(),
-        division_id: locationData.division.id,
-        district_id: locationData.district.id,
-        upazila_id: locationData.upazila.id,
-      });
+      let response;
+      if (modalMode === "add") {
+        response = await addAddressApi({
+          street_address: text,
+          division_id: locationData.division.id,
+          district_id: locationData.district.id,
+          upazila_id: locationData.upazila.id,
+        });
+      } else {
+        response = await updateAddressApi(editingAddress.id, {
+          street_address: text,
+          division_id: editingAddress.division_id,
+          district_id: editingAddress.district_id,
+          upazila_id: editingAddress.upazila_id,
+          is_default: isDefaultAddress(editingAddress),
+        });
+      }
       if (response.success) {
         Toast.show({
           type: "success",
-          text1: "ঠিকানা যোগ হয়েছে!",
+          text1:
+            modalMode === "add" ? "ঠিকানা যোগ হয়েছে!" : "ঠিকানা আপডেট হয়েছে!",
           position: "top",
           visibilityTime: 1500,
         });
+        setModalVisible(false);
+        setEditingAddress(null);
         await fetchAddresses();
-        setShowNewAddressField(false);
-        setNewAddress("");
       }
     } catch (error: any) {
       Toast.show({
         type: "error",
         text1: "ব্যর্থ",
-        text2: error.message || "ঠিকানা যোগ করা যায়নি",
+        text2: error.message || "আবার চেষ্টা করুন",
         position: "bottom",
       });
     } finally {
-      setAddingAddress(false);
+      setSaving(false);
     }
   };
 
-  const handleSaveEdit = async (address: any) => {
-    if (!editingText.trim()) {
-      Toast.show({ type: "error", text1: "ঠিকানা খালি", position: "bottom" });
-      return;
-    }
+  const handleSaveName = async (text: string) => {
+    setSavingName(true);
     try {
-      const response = await updateAddressApi(address.id, {
-        street_address: editingText.trim(),
-        division_id: address.division_id,
-        district_id: address.district_id,
-        upazila_id: address.upazila_id,
-        is_default: isDefaultAddress(address),
-      });
+      const response = await updateProfileNameApi(text);
       if (response.success) {
+        setName(text);
         Toast.show({
           type: "success",
-          text1: "ঠিকানা আপডেট হয়েছে!",
+          text1: "নাম আপডেট হয়েছে!",
           position: "top",
           visibilityTime: 1500,
         });
-        await fetchAddresses();
-        setEditingAddressId(null);
-        setEditingText("");
+        setNameModalVisible(false);
       }
     } catch (error: any) {
       Toast.show({
         type: "error",
         text1: "ব্যর্থ",
-        text2: error.message,
+        text2: error.message || "আবার চেষ্টা করুন",
         position: "bottom",
       });
+    } finally {
+      setSavingName(false);
     }
   };
 
-  const handleSetDefaultAddress = async (addressId: number) => {
-    const address = addresses.find((a) => a.id === addressId);
-    if (!address || isDefaultAddress(address)) return;
+  const handleSetDefault = async (address: any) => {
+    if (isDefaultAddress(address)) return;
     try {
-      const response = await updateAddressApi(addressId, {
+      const response = await updateAddressApi(address.id, {
         street_address: address.street_address,
         division_id: address.division_id,
         district_id: address.district_id,
@@ -186,16 +430,11 @@ export default function EditProfile() {
         await fetchAddresses();
       }
     } catch (error: any) {
-      Toast.show({
-        type: "error",
-        text1: "ব্যর্থ",
-        text2: error.message,
-        position: "bottom",
-      });
+      Toast.show({ type: "error", text1: error.message, position: "bottom" });
     }
   };
 
-  const handleDeleteAddress = (addressId: number) => {
+  const handleDelete = (addressId: number) => {
     if (addresses.length === 1) {
       Alert.alert("ত্রুটি", "কমপক্ষে একটি ঠিকানা থাকতে হবে");
       return;
@@ -220,8 +459,7 @@ export default function EditProfile() {
           } catch (error: any) {
             Toast.show({
               type: "error",
-              text1: "ব্যর্থ",
-              text2: error.message,
+              text1: error.message,
               position: "bottom",
             });
           }
@@ -232,19 +470,18 @@ export default function EditProfile() {
 
   const handleDone = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (redirect === "checkout") {
-      router.replace("/checkout");
-    } else {
-      router.back();
-    }
+    if (redirect === "checkout") router.replace("/checkout");
+    else router.back();
   };
 
   if (loadingData) {
     return (
       <CommonLayout title="প্রোফাইল এডিট" currentRoute="">
-        <View className="flex-1 items-center justify-center py-20">
+        <View
+          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+        >
           <ActivityIndicator size="large" color="#059669" />
-          <Text className="text-gray-600 dark:text-gray-400 mt-4">
+          <Text style={{ color: t.textMuted, marginTop: 12 }}>
             লোড হচ্ছে...
           </Text>
         </View>
@@ -254,288 +491,340 @@ export default function EditProfile() {
 
   return (
     <CommonLayout title="প্রোফাইল এডিট" currentRoute="">
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <View className="px-6 py-6">
-          {/* Header */}
-          <View className="items-center mb-8">
-            <View className="w-16 h-16 bg-primary-600 rounded-full items-center justify-center mb-3">
-              <Ionicons name="create" size={32} color="#fff" />
+        <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
+          {/* ── Profile card ── */}
+          <View
+            style={{
+              backgroundColor: t.profileBg,
+              borderRadius: 16,
+              padding: 16,
+              marginBottom: 24,
+              borderWidth: 1,
+              borderColor: t.profileBorder,
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: "#059669",
+                alignItems: "center",
+                justifyContent: "center",
+                marginRight: 14,
+              }}
+            >
+              <Ionicons name="person" size={24} color="#fff" />
             </View>
-            <Text className="text-2xl font-bold text-gray-800 dark:text-white mb-1">
-              প্রোফাইল এডিট
-            </Text>
-            <Text className="text-gray-500 dark:text-gray-400 text-center text-sm">
-              আপনার ডেলিভারি ঠিকানা পরিচালনা করুন
-            </Text>
-          </View>
-
-          {/* Name (readonly) */}
-          <View className="mb-4">
-            <Text className="text-gray-700 dark:text-gray-300 font-medium mb-2">
-              নাম
-            </Text>
-            <View className="flex-row items-center bg-gray-100 dark:bg-gray-800 rounded-xl px-4 py-3 border border-gray-200 dark:border-gray-700">
-              <Ionicons name="person-outline" size={20} color="#9ca3af" />
-              <Text className="flex-1 ml-3 text-gray-500 dark:text-gray-400 text-base">
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: "700",
+                  color: t.textDarkGreen,
+                }}
+              >
                 {name || "—"}
               </Text>
-              <Ionicons name="lock-closed" size={16} color="#9ca3af" />
+              <Text style={{ fontSize: 13, color: t.textGreen, marginTop: 2 }}>
+                +88 {phone || "—"}
+              </Text>
+              <Text style={{ fontSize: 11, color: t.textMuted, marginTop: 4 }}>
+                ফোন পরিবর্তন করা যাবে না
+              </Text>
             </View>
-            <Text className="text-gray-400 dark:text-gray-500 text-xs mt-1 ml-1">
-              নাম পরিবর্তন করা যাবে না
-            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setNameModalVisible(true);
+              }}
+              style={{
+                padding: 8,
+                backgroundColor: t.editBg,
+                borderRadius: 10,
+              }}
+            >
+              <Ionicons name="pencil" size={16} color="#3b82f6" />
+            </TouchableOpacity>
           </View>
 
-          {/* Phone (readonly) */}
-          <View className="mb-6">
-            <Text className="text-gray-700 dark:text-gray-300 font-medium mb-2">
-              ফোন নাম্বার
+          {/* ── Address header ── */}
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 12,
+            }}
+          >
+            <Text
+              style={{ fontSize: 16, fontWeight: "700", color: t.textPrimary }}
+            >
+              ডেলিভারি ঠিকানা
             </Text>
-            <View className="flex-row items-center bg-gray-100 dark:bg-gray-800 rounded-xl px-4 py-3 border border-gray-200 dark:border-gray-700">
-              <Text className="text-gray-500 dark:text-gray-400 mr-2">+88</Text>
-              <Text className="flex-1 text-gray-500 dark:text-gray-400 text-base">
-                {phone || "Not provided"}
+            <TouchableOpacity
+              onPress={openAdd}
+              activeOpacity={0.8}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                backgroundColor: "#059669",
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+                borderRadius: 20,
+                gap: 4,
+              }}
+            >
+              <Ionicons name="add" size={18} color="#fff" />
+              <Text style={{ color: "#fff", fontWeight: "600", fontSize: 14 }}>
+                নতুন যোগ করুন
               </Text>
-              <Ionicons name="lock-closed" size={16} color="#9ca3af" />
-            </View>
-            <Text className="text-gray-400 dark:text-gray-500 text-xs mt-1 ml-1">
-              ফোন নাম্বার পরিবর্তন করা যাবে না
-            </Text>
+            </TouchableOpacity>
           </View>
 
-          {/* Address Section */}
-          <View className="mb-6">
-            <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-gray-700 dark:text-gray-300 font-semibold text-base">
-                ডেলিভারি ঠিকানা
+          {/* ── Address list ── */}
+          {addressesLoading ? (
+            <View style={{ paddingVertical: 32, alignItems: "center" }}>
+              <ActivityIndicator size="small" color="#059669" />
+              <Text style={{ color: t.textMuted, marginTop: 8, fontSize: 13 }}>
+                লোড হচ্ছে...
               </Text>
-              <TouchableOpacity
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setShowNewAddressField(true);
+            </View>
+          ) : addresses.length === 0 ? (
+            <TouchableOpacity
+              onPress={openAdd}
+              activeOpacity={0.8}
+              style={{
+                borderWidth: 2,
+                borderColor: t.emptyBorder,
+                borderStyle: "dashed",
+                borderRadius: 16,
+                paddingVertical: 36,
+                alignItems: "center",
+              }}
+            >
+              <Ionicons name="location-outline" size={40} color="#059669" />
+              <Text
+                style={{
+                  color: "#059669",
+                  fontWeight: "600",
+                  marginTop: 10,
+                  fontSize: 15,
                 }}
-                className="flex-row items-center bg-primary-600 px-3 py-2 rounded-lg"
               >
-                <Ionicons name="add-circle-outline" size={16} color="#fff" />
-                <Text className="text-white font-medium ml-1 text-sm">
-                  নতুন যোগ করুন
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Address List */}
-            {addressesLoading ? (
-              <View className="py-8 items-center">
-                <ActivityIndicator size="small" color="#059669" />
-                <Text className="text-gray-500 dark:text-gray-400 mt-2 text-sm">
-                  ঠিকানা লোড হচ্ছে...
-                </Text>
-              </View>
-            ) : addresses.length === 0 ? (
-              <View className="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl p-4 border border-yellow-200 dark:border-yellow-800">
-                <View className="flex-row items-center">
-                  <Ionicons name="warning" size={20} color="#f59e0b" />
-                  <Text className="text-yellow-800 dark:text-yellow-300 ml-2 flex-1">
-                    কোনও ঠিকানা পাওয়া যায়নি। একটি ডেলিভারি ঠিকানা যোগ করুন।
-                  </Text>
-                </View>
-              </View>
-            ) : (
-              addresses.map((address: any, index: number) => (
-                <View key={address.id} className="mb-3">
+                ঠিকানা যোগ করুন
+              </Text>
+              <Text style={{ color: t.textMuted, fontSize: 13, marginTop: 4 }}>
+                ট্যাপ করে প্রথম ঠিকানা দিন
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            addresses.map((address, index) => {
+              const isDefault = isDefaultAddress(address);
+              return (
+                <View
+                  key={address.id}
+                  style={{
+                    backgroundColor: t.card,
+                    borderRadius: 16,
+                    marginBottom: 12,
+                    borderWidth: 1.5,
+                    borderColor: isDefault ? "#059669" : t.border,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: t.dark ? 0.3 : 0.06,
+                    shadowRadius: 6,
+                    elevation: 2,
+                  }}
+                >
+                  {/* Top row */}
                   <View
-                    className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700"
                     style={{
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 1 },
-                      shadowOpacity: 0.06,
-                      shadowRadius: 3,
-                      elevation: 2,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      paddingHorizontal: 14,
+                      paddingTop: 14,
+                      paddingBottom: 8,
                     }}
                   >
-                    {/* Address Header */}
-                    <View className="flex-row items-center justify-between mb-2">
-                      <View className="flex-row items-center">
-                        <Ionicons
-                          name="location-outline"
-                          size={18}
-                          color="#059669"
-                        />
-                        <Text className="text-gray-700 dark:text-gray-300 font-medium ml-2">
+                    <View
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 17,
+                        backgroundColor: isDefault ? "#059669" : t.iconBgGray,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginRight: 10,
+                      }}
+                    >
+                      <Ionicons
+                        name="location"
+                        size={17}
+                        color={isDefault ? "#fff" : t.iconColorGray}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontWeight: "600",
+                            color: t.textSecondary,
+                            fontSize: 14,
+                          }}
+                        >
                           ঠিকানা {index + 1}
                         </Text>
-                        {isDefaultAddress(address) && (
-                          <View className="ml-2 bg-primary-600 px-2 py-0.5 rounded">
-                            <Text className="text-white text-xs font-medium">
+                        {isDefault && (
+                          <View
+                            style={{
+                              backgroundColor: "#d1fae5",
+                              paddingHorizontal: 8,
+                              paddingVertical: 2,
+                              borderRadius: 20,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 11,
+                                color: "#065f46",
+                                fontWeight: "600",
+                              }}
+                            >
                               ডিফল্ট
                             </Text>
                           </View>
                         )}
                       </View>
+                    </View>
+
+                    {/* Edit + Delete buttons */}
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      <TouchableOpacity
+                        onPress={() => openEdit(address)}
+                        activeOpacity={0.7}
+                        style={{
+                          padding: 8,
+                          backgroundColor: t.editBg,
+                          borderRadius: 10,
+                        }}
+                      >
+                        <Ionicons name="pencil" size={16} color="#3b82f6" />
+                      </TouchableOpacity>
                       {addresses.length > 1 && (
                         <TouchableOpacity
-                          onPress={() => {
-                            Haptics.impactAsync(
-                              Haptics.ImpactFeedbackStyle.Light,
-                            );
-                            handleDeleteAddress(address.id);
+                          onPress={() => handleDelete(address.id)}
+                          activeOpacity={0.7}
+                          style={{
+                            padding: 8,
+                            backgroundColor: t.deleteBg,
+                            borderRadius: 10,
                           }}
                         >
-                          <Ionicons
-                            name="trash-outline"
-                            size={18}
-                            color="#ef4444"
-                          />
+                          <Ionicons name="trash" size={16} color="#ef4444" />
                         </TouchableOpacity>
                       )}
                     </View>
-
-                    {/* Inline Edit or Display */}
-                    {editingAddressId === address.id ? (
-                      <View>
-                        <View className="bg-gray-50 dark:bg-gray-700 rounded-lg px-3 py-2 border border-primary-500 mb-2">
-                          <TextInput
-                            value={editingText}
-                            onChangeText={setEditingText}
-                            placeholder="ঠিকানা লিখুন"
-                            placeholderTextColor="#9ca3af"
-                            multiline
-                            numberOfLines={3}
-                            textAlignVertical="top"
-                            className="text-gray-800 dark:text-white text-sm"
-                            style={{ minHeight: 60 }}
-                            autoFocus
-                          />
-                        </View>
-                        <View className="flex-row gap-2">
-                          <TouchableOpacity
-                            onPress={() => handleSaveEdit(address)}
-                            className="flex-1 bg-primary-600 rounded-lg py-2"
-                          >
-                            <Text className="text-white text-center font-medium text-sm">
-                              সংরক্ষণ
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            onPress={() => {
-                              setEditingAddressId(null);
-                              setEditingText("");
-                            }}
-                            className="flex-1 bg-gray-200 dark:bg-gray-600 rounded-lg py-2"
-                          >
-                            <Text className="text-gray-800 dark:text-white text-center font-medium text-sm">
-                              বাতিল
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    ) : (
-                      <TouchableOpacity
-                        onPress={() => {
-                          setEditingAddressId(address.id);
-                          setEditingText(address.street_address);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Text className="text-gray-700 dark:text-gray-200 text-sm leading-5 mb-2">
-                          {address.street_address}
-                        </Text>
-                        <Text className="text-primary-500 text-xs">
-                          ✏️ ট্যাপ করে সম্পাদনা করুন
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-
-                    {/* Default Toggle */}
-                    {editingAddressId !== address.id && (
-                      <View className="flex-row justify-between items-center border-t mt-3 pt-3 border-gray-100 dark:border-gray-600">
-                        <Text className="text-gray-500 dark:text-gray-400 text-sm">
-                          ডিফল্ট হিসেবে সেট করুন
-                        </Text>
-                        <Switch
-                          value={isDefaultAddress(address)}
-                          onValueChange={(v) => {
-                            if (v) handleSetDefaultAddress(address.id);
-                          }}
-                          disabled={isDefaultAddress(address)}
-                          trackColor={{ false: "#d1d5db", true: "#059669" }}
-                          thumbColor={
-                            isDefaultAddress(address) ? "#ffffff" : "#f3f4f6"
-                          }
-                        />
-                      </View>
-                    )}
                   </View>
-                </View>
-              ))
-            )}
 
-            {/* New Address Field */}
-            {showNewAddressField && (
-              <View className="bg-primary-50 dark:bg-primary-900/30 rounded-xl p-4 border-2 border-primary-300 dark:border-primary-700 mt-2">
-                <View className="flex-row items-center mb-3">
-                  <Ionicons name="add-circle" size={20} color="#059669" />
-                  <Text className="text-gray-800 dark:text-white font-medium ml-2">
-                    নতুন ঠিকানা
-                  </Text>
-                </View>
-                <View className="bg-white dark:bg-gray-700 rounded-lg px-3 py-2 border border-gray-300 dark:border-gray-600 mb-3">
-                  <TextInput
-                    value={newAddress}
-                    onChangeText={setNewAddress}
-                    placeholder="House/Flat, Street, Area"
-                    placeholderTextColor="#9ca3af"
-                    multiline
-                    numberOfLines={3}
-                    textAlignVertical="top"
-                    className="text-gray-800 dark:text-white text-sm"
-                    style={{ minHeight: 60 }}
-                    autoFocus
-                  />
-                </View>
-                <View className="flex-row gap-2">
-                  <TouchableOpacity
-                    onPress={handleAddNewAddress}
-                    disabled={addingAddress}
-                    className={`flex-1 ${addingAddress ? "bg-gray-400" : "bg-primary-600"} rounded-lg py-2.5`}
-                  >
-                    {addingAddress ? (
-                      <ActivityIndicator color="#fff" size="small" />
-                    ) : (
-                      <Text className="text-white text-center font-bold text-sm">
-                        ঠিকানা সংরক্ষণ
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setShowNewAddressField(false);
-                      setNewAddress("");
+                  {/* Address text */}
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      color: t.textMuted,
+                      lineHeight: 21,
+                      paddingHorizontal: 14,
+                      paddingBottom: 12,
                     }}
-                    disabled={addingAddress}
-                    className="flex-1 bg-gray-200 dark:bg-gray-600 rounded-lg py-2.5"
                   >
-                    <Text className="text-gray-800 dark:text-white text-center font-bold text-sm">
-                      বাতিল
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-          </View>
+                    {address.street_address}
+                  </Text>
 
-          {/* Done Button */}
+                  {/* Default toggle */}
+                  {!isDefault && (
+                    <TouchableOpacity
+                      onPress={() => handleSetDefault(address)}
+                      activeOpacity={0.8}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        paddingHorizontal: 14,
+                        paddingVertical: 10,
+                        borderTopWidth: 1,
+                        borderTopColor: t.borderTop,
+                        backgroundColor: t.cardAlt,
+                        borderBottomLeftRadius: 16,
+                        borderBottomRightRadius: 16,
+                      }}
+                    >
+                      <Text style={{ fontSize: 13, color: t.textMuted }}>
+                        ডিফল্ট হিসেবে সেট করুন
+                      </Text>
+                      <Switch
+                        value={false}
+                        onValueChange={() => handleSetDefault(address)}
+                        trackColor={{ false: "#4b5563", true: "#059669" }}
+                        thumbColor="#fff"
+                      />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+            })
+          )}
+
+          {/* ── Done button ── */}
           <TouchableOpacity
             onPress={handleDone}
-            className="bg-primary-600 rounded-xl py-4 items-center mb-6"
+            activeOpacity={0.85}
+            style={{
+              backgroundColor: "#059669",
+              borderRadius: 16,
+              paddingVertical: 16,
+              alignItems: "center",
+              marginTop: 8,
+            }}
           >
-            <Text className="text-white font-semibold text-base">সম্পন্ন</Text>
+            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>
+              সম্পন্ন
+            </Text>
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </ScrollView>
+
+      {/* ── Bottom sheet modal ── */}
+      <AddressModal
+        visible={modalVisible}
+        onClose={closeModal}
+        onSave={handleSave}
+        initialValue={editingAddress?.street_address ?? ""}
+        title={
+          modalMode === "add" ? "নতুন ঠিকানা যোগ করুন" : "ঠিকানা সম্পাদনা করুন"
+        }
+        saving={saving}
+      />
+      <AddressModal
+        visible={nameModalVisible}
+        onClose={() => !savingName && setNameModalVisible(false)}
+        onSave={handleSaveName}
+        initialValue={name}
+        title="নাম পরিবর্তন করুন"
+        saving={savingName}
+      />
     </CommonLayout>
   );
 }

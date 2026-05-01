@@ -123,7 +123,7 @@ export default function Slider({ sliders }: SliderProps) {
 
   return (
     <View
-      className="my-0"
+      className="my-0 py-1 dark:bg-gray-800"
       onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
     >
       <View style={{ position: "relative" }}>

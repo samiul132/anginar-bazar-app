@@ -116,14 +116,14 @@ export default function CompleteProfile() {
           </View>
 
           {/* Service Area Info */}
-          <View className="mb-6 bg-primary-50 dark:bg-primary-950 rounded-xl p-4 border border-primary-200 dark:border-primary-800">
+          <View className="mb-6 bg-primary-50 dark:bg-gray-500 rounded-xl p-4 border border-primary-200 dark:border-primary-800">
             <View className="flex-row items-center mb-2">
               <Ionicons name="information-circle" size={20} color="#059669" />
               <Text className="text-gray-800 dark:text-white font-semibold ml-2 text-base">
                 সেবা এলাকা
               </Text>
             </View>
-            <Text className="text-gray-600 dark:text-gray-400 text-sm">
+            <Text className="text-gray-600 dark:text-white text-sm">
               বর্তমানে সেবা দেওয়া হচ্ছে: {locationData.district.bn_name} (
               {locationData.district.name}) - {locationData.upazila.bn_name}
             </Text>

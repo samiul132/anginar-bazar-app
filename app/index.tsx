@@ -21,6 +21,7 @@ import ProductCard from "../components/ProductCard";
 import Slider, { SliderData } from "../components/Slider";
 import { getHomeDataApi, handleApiError } from "../config/api";
 import { useCartItems } from "../contexts/CartContext";
+import { useLocation } from "../contexts/LocationContext";
 
 const { width } = Dimensions.get("window");
 
@@ -220,6 +221,10 @@ export default function Index() {
   const scrollY = useRef(new Animated.Value(0)).current;
   const openMenuRef = useRef<(() => void) | null>(null);
 
+  const [allCategories, setAllCategories] = useState<Category[]>([]);
+
+  const { location, loading, requestLocation } = useLocation();
+
   // ── featured categories
   const [featuredCategories, setFeaturedCategories] = useState<
     FeaturedCategory[]
@@ -250,6 +255,7 @@ export default function Index() {
         if (d.popularItems) setPopularItems(d.popularItems);
         if (d.brands) setBrands(d.brands);
         if (d.sliders) setSliders(d.sliders);
+        if (d.categories) setAllCategories(d.categories);
         if (d.banners) {
           const sorted = [...d.banners].sort(
             (a: Banner, b: Banner) =>
@@ -258,7 +264,7 @@ export default function Index() {
           setBanners(sorted);
         }
 
-        // ── Featured categories: products সহ সরাসরি সেট করুন ──
+        // ── Featured categories with products
         if (d.featuredCategories) {
           const filtered = (d.featuredCategories as any[])
             .filter((cat) => cat.products && cat.products.length > 0)
@@ -326,6 +332,25 @@ export default function Index() {
           <Text className="text-primary-600">বাজার</Text>
         </Text>
       }
+      // title={
+      //   <TouchableOpacity
+      //     onPress={requestLocation}
+      //     style={{ flexDirection: "row", alignItems: "center" }}
+      //   >
+      //     <View>
+      //       <Text className="text-2xl font-bold">
+      //         <Text className="text-secondary-600">আঙ্গিনার </Text>
+      //         <Text className="text-primary-600">বাজার</Text>
+      //       </Text>
+      //       <View style={{ flexDirection: "row", alignItems: "center" }}>
+      //         <Ionicons name="location-outline" size={12} color="#6b7280" />
+      //         <Text className="text-xs text-gray-500 ml-1">
+      //           {loading ? "খুঁজছি..." : location.city}
+      //         </Text>
+      //       </View>
+      //     </View>
+      //   </TouchableOpacity>
+      // }
       currentRoute="index"
       hideScrollView={true}
       scrollY={scrollY}
@@ -456,59 +481,62 @@ export default function Index() {
             {/* ── SLIDER ── */}
             <Slider sliders={sliders} />
 
-            {/* ── PARENT CATEGORIES ── */}
-            <View className="bg-blue-50 dark:bg-gray-800 px-3 py-3">
-              <View className="flex-row flex-wrap justify-evenly">
-                {parentCategories.map((cat) => (
-                  <TouchableOpacity
-                    key={cat.id}
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      router.push(`/categoryDetails?slug=${cat.slug}`);
-                    }}
-                    className="bg-white dark:bg-gray-700 rounded-md px-2 py-2 mb-3"
-                    style={{
-                      width: CARD_WIDTH,
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.1,
-                      shadowRadius: 4,
-                      elevation: 3,
-                    }}
-                  >
-                    <View className="flex-row items-center">
-                      <Image
-                        source={{ uri: getImageUrl(cat.image) }}
-                        className="w-10 h-10 rounded-xl mr-2"
-                        resizeMode="contain"
-                      />
-                      <View className="flex-1">
-                        <Text
-                          className="font-semibold text-xs text-gray-800 dark:text-gray-200"
-                          numberOfLines={2}
-                        >
-                          {cat.category_name}
-                        </Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <TouchableOpacity
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  router.push("/categories");
-                }}
-                className="flex-row items-center justify-center py-2"
-              >
-                <Text
-                  style={{ color: "#319F00" }}
-                  className="font-semibold text-sm"
+            {/* ── ALL CATEGORIES ── */}
+            {allCategories.length > 0 && (
+              <View className="bg-blue-50 dark:bg-gray-800 pt-3 pb-2">
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  className="px-3"
                 >
-                  আরও…
-                </Text>
-              </TouchableOpacity>
-            </View>
+                  {Array.from({
+                    length: Math.ceil(allCategories.length / 4),
+                  }).map((_, colIndex) => (
+                    <View key={colIndex} style={{ marginRight: 10 }}>
+                      {allCategories
+                        .slice(colIndex * 4, colIndex * 4 + 4)
+                        .map((cat) => (
+                          <TouchableOpacity
+                            key={cat.id}
+                            onPress={() => {
+                              Haptics.impactAsync(
+                                Haptics.ImpactFeedbackStyle.Light,
+                              );
+                              router.push(`/categoryDetails?slug=${cat.slug}`);
+                            }}
+                            className="bg-white dark:bg-gray-700 rounded-md px-2 py-2 mb-2"
+                            style={{
+                              width: CARD_WIDTH,
+                              height: 50,
+                              shadowColor: "#000",
+                              shadowOffset: { width: 0, height: 2 },
+                              shadowOpacity: 0.1,
+                              shadowRadius: 4,
+                              elevation: 3,
+                            }}
+                          >
+                            <View className="flex-row items-center">
+                              <Image
+                                source={{ uri: getImageUrl(cat.image) }}
+                                className="w-10 h-10 rounded-xl mr-2"
+                                resizeMode="contain"
+                              />
+                              <View className="flex-1">
+                                <Text
+                                  className="font-semibold text-xs text-gray-800 dark:text-gray-200"
+                                  numberOfLines={2}
+                                >
+                                  {cat.category_name}
+                                </Text>
+                              </View>
+                            </View>
+                          </TouchableOpacity>
+                        ))}
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
 
             {/* ── BANNER ── */}
             <BannerGroup banners={banners} startIndex={0} count={1} />
